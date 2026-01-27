@@ -95,23 +95,53 @@ export default function Index() {
             </Link>
 
             {/* Deadline Notice + Countdown */}
-            <div className="space-y-2 text-sm sm:text-base text-muted-foreground">
-              <p>
-                報名截止：
-                <span className="text-primary font-medium"> {EVENT_INFO.deadlineDisplay}</span>
-              </p>
-
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-background/70 px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm shadow-sm">
-                <span className="text-primary font-semibold tracking-wide">倒數</span>
-                {countdown.isExpired ? (
-                  <span className="text-destructive font-medium">報名已截止</span>
-                ) : (
-                  <span className="tabular-nums tracking-wide">
-                    {countdown.days} 天 {countdown.hours.toString().padStart(2, '0')} 時{' '}
-                    {countdown.minutes.toString().padStart(2, '0')} 分{' '}
-                    {countdown.seconds.toString().padStart(2, '0')} 秒
+            <div className="space-y-3 text-muted-foreground">
+              {/* Mobile layout */}
+              <div className="sm:hidden space-y-2">
+                <p className="text-base font-medium">
+                  報名截止：
+                  <span className="text-primary font-semibold"> {EVENT_INFO.deadlineDisplay}</span>
+                </p>
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-primary font-semibold tracking-wide text-sm">
+                    倒數
                   </span>
-                )}
+                  <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-4 py-2 text-lg shadow-sm">
+                    {countdown.isExpired ? (
+                      <span className="text-destructive font-semibold">報名已截止</span>
+                    ) : (
+                      <span className="tabular-nums tracking-wide font-semibold">
+                        {countdown.days} 天 {countdown.hours.toString().padStart(2, '0')} 時{' '}
+                        {countdown.minutes.toString().padStart(2, '0')} 分{' '}
+                        {countdown.seconds.toString().padStart(2, '0')} 秒
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tablet / Desktop layout */}
+              <div className="hidden sm:block space-y-1 text-base">
+                <p className="text-lg">
+                  報名截止：
+                  <span className="text-primary font-semibold"> {EVENT_INFO.deadlineDisplay}</span>
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-primary font-semibold tracking-wide">
+                    倒數
+                  </span>
+                  <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-5 py-2.5 text-lg shadow-sm">
+                    {countdown.isExpired ? (
+                      <span className="text-destructive font-semibold">報名已截止</span>
+                    ) : (
+                      <span className="tabular-nums tracking-wide font-semibold">
+                        {countdown.days} 天 {countdown.hours.toString().padStart(2, '0')} 時{' '}
+                        {countdown.minutes.toString().padStart(2, '0')} 分{' '}
+                        {countdown.seconds.toString().padStart(2, '0')} 秒
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
