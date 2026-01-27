@@ -54,8 +54,8 @@ export default function Index() {
   }, []);
 
   return (
-    <div className="min-h-screen marble-bg">
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16 space-y-12 lg:space-y-20">
+    <div className="min-h-screen marble-bg flex flex-col">
+      <main className="container mx-auto flex-1 px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16 space-y-12 lg:space-y-20">
         {/* Hero Section */}
         <section className="max-w-3xl mx-auto text-center animate-fade-in-up px-2 sm:px-0">
           {/* Diamond Icon */}
@@ -241,6 +241,11 @@ export default function Index() {
           </div>
         </section>
       </main>
+      <footer className="w-full border-t border-border/40 bg-background/60">
+        <div className="container mx-auto px-4 py-4 text-center text-[11px] sm:text-xs text-muted-foreground">
+          2026年 華地產鑽石分會 資訊組 蔡濬瑒 製
+        </div>
+      </footer>
     </div>
   );
 }

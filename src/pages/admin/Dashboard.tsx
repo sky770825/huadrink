@@ -26,7 +26,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen marble-bg">
+    <div className="min-h-screen marble-bg flex flex-col">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -41,7 +41,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto flex-1 px-4 py-8">
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 mb-8">
           <StatsCard title="總報名人數" value={stats.totalHeadcount} icon={Users} color="gold" />
@@ -77,6 +77,12 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <footer className="w-full border-t border-border/40 bg-card/40">
+        <div className="container mx-auto px-4 py-3 text-center text-[11px] sm:text-xs text-muted-foreground">
+          2026年 華地產鑽石分會 資訊組 蔡濬瑒 製
+        </div>
+      </footer>
 
       {/* Detail Modal */}
       <RegistrationDetailModal
