@@ -250,9 +250,15 @@ export default function Register() {
 
     } catch (error) {
       console.error('Submit error:', error);
+      const message =
+        error && typeof error === 'object' && 'message' in error
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (error as any).message
+          : '請稍後再試或聯繫主辦單位';
+
       toast({
         title: '報名失敗',
-        description: '請稍後再試或聯繫主辦單位',
+        description: message,
         variant: 'destructive',
       });
     } finally {
@@ -327,9 +333,15 @@ export default function Register() {
 
     } catch (error) {
       console.error('Submit error:', error);
+      const message =
+        error && typeof error === 'object' && 'message' in error
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (error as any).message
+          : '請稍後再試或聯繫主辦單位';
+
       toast({
         title: '登記失敗',
-        description: '請稍後再試或聯繫主辦單位',
+        description: message,
         variant: 'destructive',
       });
     } finally {

@@ -51,9 +51,6 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
   };
 
   const handleDelete = async (id: string) => {
-    const confirmed = window.confirm('確定要刪除此筆報名資料嗎？此操作無法復原。');
-    if (!confirmed) return;
-
     try {
       await deleteRegistration.mutateAsync(id);
       toast({

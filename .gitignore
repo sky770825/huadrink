@@ -25,3 +25,6 @@ dist-ssr
 
 # Bun lockfile (use npm/pnpm/yarn instead)
 bun.lockb
+
+# Local environment (use Cloudflare env vars in production)
+.env

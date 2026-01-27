@@ -75,11 +75,11 @@ export default function Index() {
 
           {/* Event Details */}
           <div className="space-y-2 mb-8">
-            <p className="flex items-center justify-center gap-2 text-base sm:text-lg md:text-xl text-muted-foreground font-light">
+            <p className="flex items-center justify-center gap-2 text-lg sm:text-xl md:text-2xl text-muted-foreground font-light">
               <CalendarDays className="w-5 h-5 text-primary/80" />
               {EVENT_INFO.date}
             </p>
-            <p className="flex items-center justify-center gap-2 text-sm sm:text-base md:text-lg text-muted-foreground font-light">
+            <p className="flex items-center justify-center gap-2 text-base sm:text-lg md:text-xl text-muted-foreground font-light">
               <Clock className="w-5 h-5 text-primary/80" />
               {EVENT_INFO.checkInTime} 入場｜{EVENT_INFO.startTime} 正式開始
             </p>
@@ -95,7 +95,7 @@ export default function Index() {
             </Link>
 
             {/* Deadline Notice + Countdown */}
-            <div className="space-y-2 text-xs sm:text-sm text-muted-foreground">
+            <div className="space-y-2 text-sm sm:text-base text-muted-foreground">
               <p>
                 報名截止：
                 <span className="text-primary font-medium"> {EVENT_INFO.deadlineDisplay}</span>
