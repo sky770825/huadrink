@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>表單提交測試</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>表單提交測試工具</h1>
+    <p>此工具會自動提交測試資料到 Supabase 並同步到 Google Sheets</p>
+    
+    <button id="testBtn" onclick="testSubmission()">開始測試</button>
+    <button onclick="checkGoogleSheets()">檢查 Google Sheets</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const supabaseUrl = 'https://dhscdqpphloxzoyzytfz.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoc2NkcXBwaGxveHpveXp5dGZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NzkxMzYsImV4cCI6MjA4NTA1NTEzNn0._YoLc5YweOMg2RfoZrYCBbgVXux-mfRRVeRbhUK01PA';
+    const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbzIbMWSSwXtGJfQHDxGYj0SLVXQdVa3KW5IwGnFhUvsGnjtBNEduT7zI9SiHZARGmxCXg/exec';
+    const spreadsheetId = '1cT3VJcDHyqHUEEdRfb7b9zMifBJk6f6upujGYV9dj4U';
+
+    function log(message, type = 'info') {
+      const result = document.getElementById('result');
+      result.className = type;
+      result.textContent = message;
+      console.log(message);
+    }
+
+    function formatRegistration(reg) {
+      return [
+        '1',
+        reg.ref_code,
+        '外部報名',
+        reg.headcount.toString(),
+        '',
+        reg.company || '未填寫',
+        reg.title || '',
+        reg.contact_name,
+        reg.phone,
+        reg.email || '',
+        reg.line_id || '',
+        '一般',
+        reg.diet_other || '',
+        reg.allergy_note || '',
+        reg.photo_consent ? '是' : '否',
+        reg.inviter || '',
+        reg.vip_note || '',
+        reg.invoice_needed ? '是' : '否',
+        reg.invoice_title || '',
+        reg.invoice_tax_id || '',
+        '轉帳',
+        '已付款',
+        '',
+        '',
+        '',
+        new Date(reg.created_at).toLocaleString('zh-TW'),
+        new Date(reg.updated_at).toLocaleString('zh-TW'),
+      ];
+    }
+
+    async function testSubmission() {
+      const btn = document.getElementById('testBtn');
+      btn.disabled = true;
+      btn.textContent = '測試中...';
+
+      let logMessage = '🚀 開始測試表單提交...\n\n';
+
+      try {
+        // 準備測試資料
+        const timestamp = Date.now();
+        const testData = {
+          type: 'external',
+          headcount: 1,
+          attendee_list: [],
+          company: '測試公司',
+          title: '測試職稱',
+          contact_name: '測試用戶' + timestamp,
+          phone: '0912345678',
+          email: `test${timestamp}@example.com`,
+          line_id: '',
+          diet: 'normal',
+          diet_other: '',
+          allergy_note: '',
+          photo_consent: true,
+          invoice_needed: false,
+          invoice_title: '',
+          invoice_tax_id: '',
+          inviter: '',
+          vip_note: '',
+        };
+
+        const refCode = 'TEST-' + timestamp.toString().slice(-6);
+
+        // 步驟 1: 提交到 Supabase
+        logMessage += '📤 步驟 1: 提交到 Supabase...\n';
+        log(logMessage, 'info');
+
+        const supabaseResponse = await fetch(`${supabaseUrl}/rest/v1/registrations?select=*`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify({
+            ref_code: refCode,
+            type: testData.type,
+            headcount: testData.headcount,
+            attendee_list: testData.attendee_list,
+            company: testData.company || '未填寫',
+            title: testData.title,
+            contact_name: testData.contact_name,
+            phone: testData.phone,
+            email: testData.email,
+            line_id: testData.line_id,
+            diet: testData.diet,
+            diet_other: testData.diet_other,
+            allergy_note: testData.allergy_note,
+            photo_consent: testData.photo_consent,
+            invoice_needed: testData.invoice_needed,
+            invoice_title: testData.invoice_title,
+            invoice_tax_id: testData.invoice_tax_id,
+            inviter: testData.inviter,
+            vip_note: testData.vip_note,
+            pay_method: 'transfer',
+            pay_status: 'paid',
+            pay_proof_url: null,
+            status: 'open',
+          }),
+        });
+
+        if (!supabaseResponse.ok) {
+          const error = await supabaseResponse.text();
+          throw new Error(`Supabase 提交失敗: ${supabaseResponse.status} - ${error}`);
+        }
+
+        const registration = await supabaseResponse.json();
+        logMessage += `✅ Supabase 提交成功！\n`;
+        logMessage += `   報名編號: ${refCode}\n`;
+        logMessage += `   聯絡人: ${testData.contact_name}\n\n`;
+        log(logMessage, 'info');
+
+        // 步驟 2: 同步到 Google Sheets
+        logMessage += '📊 步驟 2: 同步到 Google Sheets...\n';
+        log(logMessage, 'info');
+
+        const headers = [
+          '序號', '報名編號', '報名類型', '人數', '參與者名單', '公司', '職稱',
+          '聯絡人', '電話', 'Email', 'LINE ID', '飲食需求', '其他飲食需求',
+          '過敏備註', '照片同意', '邀請人', 'VIP 備註', '需要發票', '發票抬頭',
+          '統一編號', '付款方式', '付款狀態', '座位區域', '桌號', '管理員備註',
+          '建立時間', '更新時間',
+        ];
+
+        const requestBody = {
+          spreadsheetId: spreadsheetId,
+          sheetName: '工作表1',
+          values: [headers, formatRegistration(registration[0])],
+        };
+
+        logMessage += `📤 發送請求到 Google Apps Script...\n`;
+        logMessage += `   請求資料大小: ${JSON.stringify(requestBody).length} bytes\n`;
+        log(logMessage, 'info');
+
+        const sheetsResponse = await fetch(appsScriptUrl, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          redirect: 'follow',
+          body: JSON.stringify(requestBody),
+        });
+
+        logMessage += `📥 Google Apps Script 響應狀態: ${sheetsResponse.status} ${sheetsResponse.statusText}\n`;
+        log(logMessage, 'info');
+
+        const responseText = await sheetsResponse.text();
+        logMessage += `📄 響應內容: ${responseText.substring(0, 200)}...\n\n`;
+
+        if (sheetsResponse.ok) {
+          try {
+            const result = JSON.parse(responseText);
+            if (result.success) {
+              logMessage += '✅ Google Sheets 同步成功！\n\n';
+              logMessage += '📊 測試結果總結:\n';
+              logMessage += '  ✅ Supabase 提交: 成功\n';
+              logMessage += '  ✅ Google Sheets 同步: 成功\n';
+              logMessage += `  📝 報名編號: ${refCode}\n`;
+              logMessage += `  👤 聯絡人: ${testData.contact_name}\n\n`;
+              logMessage += '🔗 請檢查 Google Sheets 確認資料是否已寫入:\n';
+              logMessage += `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit\n`;
+              log(logMessage, 'success');
+            } else {
+              logMessage += `❌ Google Sheets 同步失敗: ${result.error || result.message}\n`;
+              log(logMessage, 'error');
+            }
+          } catch (parseError) {
+            logMessage += `❌ 解析響應失敗: ${parseError.message}\n`;
+            logMessage += `原始響應: ${responseText}\n`;
+            
+            if (responseText.includes('CORS') || responseText.includes('Access-Control')) {
+              logMessage += '\n⚠️ CORS 錯誤：請確認 Google Apps Script 部署設置\n';
+              logMessage += '1. 點擊「部署」>「管理部署作業」\n';
+              logMessage += '2. 編輯部署\n';
+              logMessage += '3. 「具有存取權的使用者」設為「任何人」\n';
+              logMessage += '4. 選擇「新增版本」並更新\n';
+            }
+            log(logMessage, 'error');
+          }
+        } else {
+          logMessage += `❌ Google Sheets 同步失敗: HTTP ${sheetsResponse.status}\n`;
+          logMessage += `響應內容: ${responseText.substring(0, 200)}\n`;
+          log(logMessage, 'error');
+        }
+
+      } catch (error) {
+        logMessage += `❌ 測試失敗: ${error.message}\n`;
+        if (error.stack) {
+          logMessage += `堆疊: ${error.stack}\n`;
+        }
+        log(logMessage, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '開始測試';
+      }
+    }
+
+    function checkGoogleSheets() {
+      window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`, '_blank');
+    }
+  </script>
+</body>
+</html>

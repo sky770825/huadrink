@@ -1,0 +1,280 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 
+  華地產鑽石分會 春酒報名系統
+  Design System: Luxury Black Gold / Ivory / Marble
+  Typography: Cormorant Garamond (serif) + Inter (sans-serif)
+*/
+
+@layer base {
+  :root {
+    /* Core Luxury Palette */
+    --background: 40 20% 98%;
+    --foreground: 30 10% 12%;
+
+    --card: 40 25% 97%;
+    --card-foreground: 30 10% 12%;
+
+    --popover: 40 25% 99%;
+    --popover-foreground: 30 10% 12%;
+
+    /* Gold Primary */
+    --primary: 42 75% 45%;
+    --primary-foreground: 40 20% 98%;
+
+    /* Ivory Secondary */
+    --secondary: 40 30% 94%;
+    --secondary-foreground: 30 10% 20%;
+
+    /* Muted Marble Tones */
+    --muted: 40 15% 92%;
+    --muted-foreground: 30 8% 45%;
+
+    /* Warm Gold Accent */
+    --accent: 42 65% 50%;
+    --accent-foreground: 30 10% 10%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 20% 88%;
+    --input: 40 20% 90%;
+    --ring: 42 75% 45%;
+
+    --radius: 0.5rem;
+
+    /* Custom Luxury Colors */
+    --gold: 42 75% 45%;
+    --gold-light: 43 70% 65%;
+    --gold-dark: 40 80% 35%;
+    --ivory: 40 30% 97%;
+    --charcoal: 30 10% 15%;
+    --marble-light: 40 15% 95%;
+    --marble-accent: 40 10% 85%;
+
+    /* Gradients */
+    --gradient-gold: linear-gradient(135deg, hsl(42 75% 45%), hsl(43 70% 55%));
+    --gradient-marble: linear-gradient(180deg, hsl(40 15% 98%), hsl(40 10% 92%));
+    --gradient-dark: linear-gradient(180deg, hsl(30 10% 8%), hsl(30 12% 15%));
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(30 10% 20% / 0.08);
+    --shadow-card: 0 8px 32px -8px hsl(30 10% 20% / 0.12);
+    --shadow-gold: 0 4px 24px -4px hsl(42 75% 45% / 0.25);
+
+    /* Sidebar */
+    --sidebar-background: 30 10% 12%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 42 75% 45%;
+    --sidebar-primary-foreground: 30 10% 10%;
+    --sidebar-accent: 30 12% 20%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 30 10% 25%;
+    --sidebar-ring: 42 75% 45%;
+  }
+
+  .dark {
+    --background: 30 10% 8%;
+    --foreground: 40 20% 95%;
+
+    --card: 30 12% 12%;
+    --card-foreground: 40 20% 95%;
+
+    --popover: 30 12% 10%;
+    --popover-foreground: 40 20% 95%;
+
+    --primary: 42 70% 55%;
+    --primary-foreground: 30 10% 8%;
+
+    --secondary: 30 12% 18%;
+    --secondary-foreground: 40 20% 95%;
+
+    --muted: 30 10% 20%;
+    --muted-foreground: 40 15% 60%;
+
+    --accent: 42 65% 50%;
+    --accent-foreground: 30 10% 8%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 10% 22%;
+    --input: 30 10% 22%;
+    --ring: 42 70% 55%;
+
+    --gold: 42 70% 55%;
+    --gold-light: 43 65% 70%;
+    --gold-dark: 40 75% 40%;
+    --ivory: 40 20% 92%;
+    --charcoal: 30 10% 10%;
+    --marble-light: 30 8% 18%;
+    --marble-accent: 30 6% 25%;
+
+    --sidebar-background: 30 12% 6%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 42 70% 55%;
+    --sidebar-primary-foreground: 30 10% 8%;
+    --sidebar-accent: 30 10% 15%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 30 8% 18%;
+    --sidebar-ring: 42 70% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer components {
+  /* Glass Card Effect */
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-md border border-border/50 shadow-lg;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--card) / 0.9),
+      hsl(var(--card) / 0.7)
+    );
+  }
+
+  /* Marble Background */
+  .marble-bg {
+    background: 
+      linear-gradient(135deg, hsl(40 15% 95% / 0.4) 0%, transparent 50%),
+      linear-gradient(225deg, hsl(40 10% 90% / 0.3) 0%, transparent 50%),
+      hsl(var(--background));
+    background-size: 100% 100%, 100% 100%, 100% 100%;
+  }
+
+  /* Gold Accent Line */
+  .gold-line {
+    @apply h-px w-full;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--gold)),
+      transparent
+    );
+  }
+
+  /* Luxury Button Styles */
+  .btn-luxury {
+    @apply relative overflow-hidden transition-all duration-300;
+    background: linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-light)));
+  }
+
+  .btn-luxury::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, hsl(var(--gold-light)), hsl(var(--gold)));
+  }
+
+  .btn-luxury:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Form Input Luxury Style */
+  .input-luxury {
+    @apply bg-background/50 border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200;
+  }
+
+  /* Stepper Styles */
+  .stepper-step {
+    @apply flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300;
+  }
+
+  .stepper-step-active {
+    @apply border-primary bg-primary text-primary-foreground;
+  }
+
+  .stepper-step-completed {
+    @apply border-primary bg-primary/10 text-primary;
+  }
+
+  .stepper-step-pending {
+    @apply border-muted-foreground/30 text-muted-foreground;
+  }
+
+  /* Fade In Animation */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in-delay {
+    animation: fadeIn 0.6s ease-out 0.2s forwards;
+    opacity: 0;
+  }
+
+  /* Hero specific */
+  .hero-gradient {
+    background: 
+      linear-gradient(180deg, hsl(40 15% 97% / 0.95) 0%, hsl(40 15% 95% / 0.9) 100%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+}
+
+@layer utilities {
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+
+  .bg-gold {
+    background-color: hsl(var(--gold));
+  }
+
+  .border-gold {
+    border-color: hsl(var(--gold));
+  }
+
+  .font-serif {
+    font-family: 'Cormorant Garamond', serif;
+  }
+
+  .font-sans {
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

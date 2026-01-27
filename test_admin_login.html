@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>測試管理員登入</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #007bff;
+      padding-bottom: 10px;
+    }
+    .info-box {
+      background: #e7f3ff;
+      border-left: 4px solid #007bff;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+      width: 100%;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    .link-btn {
+      display: inline-block;
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background: #6c757d;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+    }
+    .link-btn:hover {
+      background: #5a6268;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 測試管理員登入</h1>
+    
+    <div class="info-box">
+      <strong>管理員帳號資訊：</strong><br>
+      Email: <code>123@admin.com</code><br>
+      密碼: <code>123456</code>
+    </div>
+
+    <div style="margin: 20px 0;">
+      <a href="http://localhost:5174/admin/login" target="_blank" class="link-btn">🌐 打開登入頁面</a>
+      <a href="https://supabase.com/dashboard/project/kwxlxjfcdghpguypadvi/auth/users" target="_blank" class="link-btn">🔧 修改密碼</a>
+    </div>
+
+    <button onclick="testLogin()">測試登入</button>
+    <button onclick="checkAdminStatus()">檢查管理員狀態</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://kwxlxjfcdghpguypadvi.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3eGx4amZjZGdocGd1eXBhZHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3ODk5NTMsImV4cCI6MjA4NDM2NTk1M30.0KJIXhxlPOx-5tWQyX12DMNXcWCLc2NmMCyoJY4y024';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function log(message, type = 'info') {
+      const result = document.getElementById('result');
+      result.className = type;
+      result.textContent = message;
+      console.log(message);
+    }
+
+    async function testLogin() {
+      log('🔐 正在測試登入...', 'info');
+      
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: '123@admin.com',
+          password: '123456',
+        });
+
+        if (error) {
+          log(`❌ 登入失敗: ${error.message}\n\n可能的原因：\n1. 密碼尚未修改為 123456\n2. 用戶不存在\n3. 帳號未確認\n\n請先在 Supabase Dashboard 中修改密碼`, 'error');
+          return;
+        }
+
+        if (!data.user) {
+          log('❌ 登入失敗：未返回用戶資料', 'error');
+          return;
+        }
+
+        // 檢查是否為管理員
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        let message = '✅ 登入成功！\n\n';
+        message += `📝 用戶資訊:\n`;
+        message += `   用戶 ID: ${data.user.id}\n`;
+        message += `   Email: ${data.user.email}\n`;
+        message += `   管理員狀態: ${adminData ? '✅ 是管理員' : '❌ 不是管理員'}\n\n`;
+
+        if (!adminData) {
+          message += `⚠️ 警告：用戶已登入，但不是管理員！\n`;
+          message += `請在 Supabase SQL Editor 中執行：\n`;
+          message += `INSERT INTO public.admins (user_id)\n`;
+          message += `VALUES ('${data.user.id}')\n`;
+          message += `ON CONFLICT (user_id) DO NOTHING;\n`;
+        } else {
+          message += `🎉 可以正常使用後台管理功能！\n`;
+          message += `\n💡 提示：現在可以訪問 http://localhost:5174/admin`;
+        }
+
+        log(message, adminData ? 'success' : 'error');
+
+        // 登出
+        await supabase.auth.signOut();
+      } catch (error) {
+        log(`❌ 錯誤: ${error.message}`, 'error');
+      }
+    }
+
+    async function checkAdminStatus() {
+      log('🔍 正在檢查管理員狀態...', 'info');
+      
+      try {
+        // 先檢查用戶是否存在
+        const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
+        
+        // 由於我們使用的是 anon key，無法直接查詢 auth.users
+        // 改用查詢 admins 表
+        const { data: admins, error: adminsError } = await supabase
+          .from('admins')
+          .select('*');
+
+        if (adminsError) {
+          log(`❌ 查詢失敗: ${adminsError.message}`, 'error');
+          return;
+        }
+
+        let message = '📊 管理員狀態檢查\n\n';
+        message += `管理員數量: ${admins?.length || 0}\n\n`;
+
+        if (admins && admins.length > 0) {
+          message += '✅ 找到管理員記錄:\n';
+          admins.forEach((admin, index) => {
+            message += `   ${index + 1}. 管理員 ID: ${admin.id}\n`;
+            message += `      用戶 ID: ${admin.user_id}\n`;
+            message += `      創建時間: ${new Date(admin.created_at).toLocaleString('zh-TW')}\n\n`;
+          });
+        } else {
+          message += '⚠️ 沒有找到管理員記錄\n';
+          message += '請執行 setup_admin_quick.sql 中的 SQL 來創建管理員\n';
+        }
+
+        message += '\n💡 提示：';
+        message += '\n1. 確認用戶 123@admin.com 已在 Supabase Dashboard 中創建';
+        message += '\n2. 確認密碼已修改為 123456';
+        message += '\n3. 確認 admins 表中有對應記錄';
+
+        log(message, admins && admins.length > 0 ? 'success' : 'info');
+      } catch (error) {
+        log(`❌ 錯誤: ${error.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

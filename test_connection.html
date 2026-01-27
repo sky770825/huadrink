@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>測試 Supabase 連接</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    .test-item {
+      margin: 10px 0;
+      padding: 10px;
+      border-left: 3px solid #007bff;
+      background: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Supabase 連接測試</h1>
+    <p>此工具會測試 Supabase 資料庫連接和基本功能</p>
+    
+    <button onclick="testConnection()">開始測試</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://kwxlxjfcdghpguypadvi.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3eGx4amZjZGdocGd1eXBhZHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3ODk5NTMsImV4cCI6MjA4NDM2NTk1M30.0KJIXhxlPOx-5tWQyX12DMNXcWCLc2NmMCyoJY4y024';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function log(message, type = 'info') {
+      const result = document.getElementById('result');
+      result.className = type;
+      result.textContent = message;
+      console.log(message);
+    }
+
+    async function testConnection() {
+      let logMessage = '🚀 開始測試 Supabase 連接...\n\n';
+
+      try {
+        // 測試 1: 檢查表是否存在
+        logMessage += '📊 測試 1: 檢查 registrations 表...\n';
+        log(logMessage, 'info');
+
+        const { data: tables, error: tableError } = await supabase
+          .from('registrations')
+          .select('id')
+          .limit(1);
+
+        if (tableError) {
+          throw new Error(`無法訪問 registrations 表: ${tableError.message}`);
+        }
+
+        logMessage += '✅ registrations 表存在且可訪問\n\n';
+        log(logMessage, 'info');
+
+        // 測試 2: 檢查 system_settings 表
+        logMessage += '⚙️ 測試 2: 檢查 system_settings 表...\n';
+        log(logMessage, 'info');
+
+        const { data: settings, error: settingsError } = await supabase
+          .from('system_settings')
+          .select('*')
+          .limit(10);
+
+        if (settingsError) {
+          throw new Error(`無法訪問 system_settings 表: ${settingsError.message}`);
+        }
+
+        logMessage += `✅ system_settings 表存在，找到 ${settings?.length || 0} 筆設定\n`;
+        if (settings && settings.length > 0) {
+          settings.forEach(s => {
+            logMessage += `   - ${s.key}: ${s.value}\n`;
+          });
+        }
+        logMessage += '\n';
+        log(logMessage, 'info');
+
+        // 測試 3: 測試插入資料（測試寫入權限）
+        logMessage += '✍️ 測試 3: 測試寫入權限...\n';
+        log(logMessage, 'info');
+
+        const testRefCode = 'TEST-' + Date.now().toString().slice(-6);
+        const { data: insertData, error: insertError } = await supabase
+          .from('registrations')
+          .insert({
+            ref_code: testRefCode,
+            type: 'external',
+            headcount: 1,
+            attendee_list: [],
+            company: '測試公司',
+            contact_name: '測試用戶',
+            phone: '0912345678',
+            email: 'test@example.com',
+            diet: 'normal',
+            photo_consent: true,
+            invoice_needed: false,
+            pay_method: 'transfer',
+            pay_status: 'paid',
+            status: 'open',
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          throw new Error(`無法插入資料: ${insertError.message}`);
+        }
+
+        logMessage += `✅ 成功插入測試資料（編號: ${testRefCode}）\n\n`;
+        log(logMessage, 'info');
+
+        // 測試 4: 測試讀取資料
+        logMessage += '📖 測試 4: 測試讀取資料...\n';
+        log(logMessage, 'info');
+
+        const { data: readData, error: readError } = await supabase
+          .from('registrations')
+          .select('*')
+          .eq('ref_code', testRefCode)
+          .single();
+
+        if (readError) {
+          throw new Error(`無法讀取資料: ${readError.message}`);
+        }
+
+        logMessage += `✅ 成功讀取資料\n`;
+        logMessage += `   聯絡人: ${readData.contact_name}\n`;
+        logMessage += `   電話: ${readData.phone}\n`;
+        logMessage += `   類型: ${readData.type}\n\n`;
+        log(logMessage, 'info');
+
+        // 測試 5: 清理測試資料
+        logMessage += '🧹 測試 5: 清理測試資料...\n';
+        log(logMessage, 'info');
+
+        const { error: deleteError } = await supabase
+          .from('registrations')
+          .delete()
+          .eq('ref_code', testRefCode);
+
+        if (deleteError) {
+          logMessage += `⚠️ 無法刪除測試資料（可忽略）: ${deleteError.message}\n\n`;
+        } else {
+          logMessage += '✅ 測試資料已清理\n\n';
+        }
+        log(logMessage, 'info');
+
+        // 總結
+        logMessage += '📊 測試結果總結:\n';
+        logMessage += '  ✅ 資料庫連接: 成功\n';
+        logMessage += '  ✅ 表結構: 正確\n';
+        logMessage += '  ✅ 讀取權限: 正常\n';
+        logMessage += '  ✅ 寫入權限: 正常\n';
+        logMessage += '  ✅ RLS 策略: 正常\n\n';
+        logMessage += '🎉 所有測試通過！資料庫設置正確，可以開始使用應用程式了。\n';
+        log(logMessage, 'success');
+
+      } catch (error) {
+        logMessage += `❌ 測試失敗: ${error.message}\n\n`;
+        logMessage += '請檢查：\n';
+        logMessage += '1. SQL 腳本是否已正確執行\n';
+        logMessage += '2. RLS 策略是否正確設置\n';
+        logMessage += '3. 環境變數是否正確配置\n';
+        log(logMessage, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

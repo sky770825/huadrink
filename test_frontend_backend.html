@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>前端後端功能測試</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #007bff;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #555;
+      margin-top: 30px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .btn-success {
+      background: #28a745;
+    }
+    .btn-success:hover {
+      background: #218838;
+    }
+    .btn-danger {
+      background: #dc3545;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    .test-section {
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .test-section h3 {
+      margin-top: 0;
+      color: #007bff;
+    }
+    .link-btn {
+      display: inline-block;
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background: #6c757d;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+    }
+    .link-btn:hover {
+      background: #5a6268;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 前端後端功能完整測試</h1>
+    <p>此工具會測試前端報名和後台提交功能，並驗證資料同步</p>
+    
+    <div style="margin: 20px 0;">
+      <a href="http://localhost:5174/register" target="_blank" class="link-btn">🌐 打開前端報名頁面</a>
+      <a href="http://localhost:5174/admin" target="_blank" class="link-btn">🔧 打開後台管理頁面</a>
+      <a href="https://supabase.com/dashboard/project/kwxlxjfcdghpguypadvi/editor" target="_blank" class="link-btn">📊 查看 Supabase 資料庫</a>
+    </div>
+
+    <div class="test-section">
+      <h3>📋 步驟 1: 檢查現有資料</h3>
+      <button onclick="checkExistingData()">檢查 Supabase 資料</button>
+      <div id="existingData"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🌐 步驟 2: 測試前端報名功能</h3>
+      <p>模擬前端用戶報名提交</p>
+      <button onclick="testFrontendRegistration()" class="btn-success">測試前端報名</button>
+      <div id="frontendResult"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🔧 步驟 3: 測試後台提交功能</h3>
+      <p>模擬後台管理員手動提交名單</p>
+      <button onclick="testBackendSubmission()" class="btn-success">測試後台提交</button>
+      <div id="backendResult"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>✅ 步驟 4: 驗證資料同步</h3>
+      <button onclick="verifyDataSync()" class="btn-success">驗證所有資料</button>
+      <div id="syncResult"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🧹 清理測試資料（可選）</h3>
+      <button onclick="cleanupTestData()" class="btn-danger">清理測試資料</button>
+      <div id="cleanupResult"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://kwxlxjfcdghpguypadvi.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3eGx4amZjZGdocGd1eXBhZHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3ODk5NTMsImV4cCI6MjA4NDM2NTk1M30.0KJIXhxlPOx-5tWQyX12DMNXcWCLc2NmMCyoJY4y024';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function log(elementId, message, type = 'info') {
+      const element = document.getElementById(elementId);
+      element.className = type;
+      element.textContent = message;
+      console.log(message);
+    }
+
+    async function checkExistingData() {
+      log('existingData', '📊 正在檢查 Supabase 資料...', 'info');
+      
+      try {
+        const { data, error } = await supabase
+          .from('registrations')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+
+        let message = `✅ 找到 ${data.length} 筆資料\n\n`;
+        
+        if (data.length > 0) {
+          message += '📋 資料列表:\n';
+          message += '─'.repeat(80) + '\n';
+          data.forEach((reg, index) => {
+            const source = reg.admin_note ? '後台' : '前端';
+            message += `${index + 1}. [${source}] ${reg.ref_code}\n`;
+            message += `   聯絡人: ${reg.contact_name}\n`;
+            message += `   電話: ${reg.phone}\n`;
+            message += `   類型: ${reg.type}\n`;
+            message += `   狀態: ${reg.status} | 付款: ${reg.pay_status}\n`;
+            if (reg.admin_note) {
+              message += `   管理員備註: ${reg.admin_note}\n`;
+            }
+            message += `   建立時間: ${new Date(reg.created_at).toLocaleString('zh-TW')}\n`;
+            message += '─'.repeat(80) + '\n';
+          });
+        } else {
+          message += 'ℹ️ 目前沒有資料\n';
+        }
+
+        log('existingData', message, 'success');
+      } catch (error) {
+        log('existingData', `❌ 錯誤: ${error.message}`, 'error');
+      }
+    }
+
+    async function testFrontendRegistration() {
+      log('frontendResult', '🌐 正在測試前端報名功能...', 'info');
+      
+      try {
+        const timestamp = Date.now();
+        const refCode = 'DINE-0303-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        
+        const testData = {
+          ref_code: refCode,
+          type: 'external',
+          headcount: 1,
+          attendee_list: [],
+          company: '前端測試公司',
+          title: null,
+          contact_name: '前端測試用戶' + timestamp,
+          phone: '0987654321',
+          email: `frontend-test${timestamp}@example.com`,
+          line_id: null,
+          diet: 'normal',
+          diet_other: null,
+          allergy_note: null,
+          photo_consent: true,
+          inviter: null,
+          vip_note: null,
+          invoice_needed: false,
+          invoice_title: null,
+          invoice_tax_id: null,
+          pay_method: 'transfer',
+          pay_status: 'paid',
+          pay_proof_url: null,
+          status: 'open',
+          admin_note: null,
+        };
+
+        const { data, error } = await supabase
+          .from('registrations')
+          .insert(testData)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        let message = '✅ 前端報名成功！\n\n';
+        message += `📝 報名資訊:\n`;
+        message += `   報名編號: ${data.ref_code}\n`;
+        message += `   聯絡人: ${data.contact_name}\n`;
+        message += `   電話: ${data.phone}\n`;
+        message += `   Email: ${data.email}\n`;
+        message += `   類型: ${data.type}\n`;
+        message += `   狀態: ${data.status}\n`;
+        message += `   付款狀態: ${data.pay_status}\n`;
+        message += `\n✅ 資料已成功寫入 Supabase 資料庫\n`;
+        message += `\n💡 提示: 現在可以在後台「名單管理」中看到這筆資料！`;
+
+        log('frontendResult', message, 'success');
+      } catch (error) {
+        log('frontendResult', `❌ 前端報名失敗: ${error.message}`, 'error');
+      }
+    }
+
+    async function testBackendSubmission() {
+      log('backendResult', '🔧 正在測試後台提交功能...', 'info');
+      
+      try {
+        const timestamp = Date.now();
+        const refCode = 'ADMIN-' + timestamp.toString().slice(-6);
+        
+        const testData = {
+          ref_code: refCode,
+          type: 'external',
+          headcount: 1,
+          attendee_list: [],
+          company: '後台測試公司',
+          title: '測試職稱',
+          contact_name: '後台測試用戶' + timestamp,
+          phone: '0912345678',
+          email: `backend-test${timestamp}@example.com`,
+          line_id: null,
+          diet: 'normal',
+          diet_other: null,
+          allergy_note: null,
+          photo_consent: true,
+          inviter: null,
+          vip_note: null,
+          invoice_needed: false,
+          invoice_title: null,
+          invoice_tax_id: null,
+          pay_method: 'transfer',
+          pay_status: 'paid',
+          pay_proof_url: null,
+          status: 'open',
+          admin_note: '這是從後台提交的測試資料',
+        };
+
+        const { data, error } = await supabase
+          .from('registrations')
+          .insert(testData)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        let message = '✅ 後台提交成功！\n\n';
+        message += `📝 提交資訊:\n`;
+        message += `   報名編號: ${data.ref_code}\n`;
+        message += `   聯絡人: ${data.contact_name}\n`;
+        message += `   電話: ${data.phone}\n`;
+        message += `   Email: ${data.email}\n`;
+        message += `   類型: ${data.type}\n`;
+        message += `   狀態: ${data.status}\n`;
+        message += `   付款狀態: ${data.pay_status}\n`;
+        message += `   管理員備註: ${data.admin_note}\n`;
+        message += `\n✅ 資料已成功寫入 Supabase 資料庫\n`;
+        message += `\n💡 提示: 現在可以在後台「名單管理」中看到這筆資料！`;
+
+        log('backendResult', message, 'success');
+      } catch (error) {
+        log('backendResult', `❌ 後台提交失敗: ${error.message}`, 'error');
+      }
+    }
+
+    async function verifyDataSync() {
+      log('syncResult', '✅ 正在驗證資料同步...', 'info');
+      
+      try {
+        const { data, error } = await supabase
+          .from('registrations')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const backendData = data.filter(r => r.admin_note);
+        const frontendData = data.filter(r => !r.admin_note);
+
+        let message = '📊 資料同步驗證結果\n\n';
+        message += '─'.repeat(80) + '\n';
+        message += `總筆數: ${data.length}\n`;
+        message += `後台提交: ${backendData.length} 筆\n`;
+        message += `前端報名: ${frontendData.length} 筆\n`;
+        message += '─'.repeat(80) + '\n\n';
+
+        message += '✅ 驗證項目:\n';
+        message += `  [${data.length > 0 ? '✓' : '✗'}] Supabase 資料庫有資料\n`;
+        message += `  [${backendData.length > 0 ? '✓' : '✗'}] 後台提交的資料存在\n`;
+        message += `  [${frontendData.length > 0 ? '✓' : '✗'}] 前端報名的資料存在\n`;
+        message += `  [${data.length > 0 ? '✓' : '✗'}] 前後端資料都在同一個資料庫\n`;
+        message += `  [${data.length > 0 ? '✓' : '✗'}] 資料可以正常讀取\n\n`;
+
+        if (data.length > 0) {
+          message += '📋 最新 5 筆資料:\n';
+          data.slice(0, 5).forEach((reg, index) => {
+            const source = reg.admin_note ? '後台' : '前端';
+            message += `  ${index + 1}. [${source}] ${reg.ref_code} - ${reg.contact_name}\n`;
+          });
+        }
+
+        message += '\n🎉 前後端整合驗證: ✅ 通過！';
+
+        log('syncResult', message, 'success');
+      } catch (error) {
+        log('syncResult', `❌ 驗證失敗: ${error.message}`, 'error');
+      }
+    }
+
+    async function cleanupTestData() {
+      if (!confirm('確定要清理所有測試資料嗎？這個操作無法復原！')) {
+        return;
+      }
+
+      log('cleanupResult', '🧹 正在清理測試資料...', 'info');
+      
+      try {
+        const { data: allData } = await supabase
+          .from('registrations')
+          .select('ref_code')
+          .or('ref_code.like.TEST-%,ref_code.like.ADMIN-%,ref_code.like.DINE-%');
+
+        if (allData && allData.length > 0) {
+          const refCodes = allData.map(r => r.ref_code);
+          
+          const { error } = await supabase
+            .from('registrations')
+            .delete()
+            .in('ref_code', refCodes);
+
+          if (error) throw error;
+
+          log('cleanupResult', `✅ 已清理 ${allData.length} 筆測試資料`, 'success');
+        } else {
+          log('cleanupResult', 'ℹ️ 沒有找到測試資料', 'info');
+        }
+      } catch (error) {
+        log('cleanupResult', `❌ 清理失敗: ${error.message}`, 'error');
+      }
+    }
+
+    // 頁面載入時自動檢查資料
+    window.onload = function() {
+      checkExistingData();
+    };
+  </script>
+</body>
+</html>

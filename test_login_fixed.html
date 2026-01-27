@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>測試登入修復</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 700px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #28a745;
+      padding-bottom: 10px;
+    }
+    .info-box {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+      width: 100%;
+    }
+    button:hover {
+      background: #218838;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    .link-btn {
+      display: inline-block;
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+    }
+    .link-btn:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✅ 測試登入修復</h1>
+    
+    <div class="info-box">
+      <strong>管理員帳號資訊：</strong><br>
+      Email: <code>123@admin.com</code><br>
+      密碼: <code>123456</code>
+    </div>
+
+    <div style="margin: 20px 0;">
+      <a href="http://localhost:5174/admin/login" target="_blank" class="link-btn">🌐 打開登入頁面</a>
+      <a href="http://localhost:5174/admin" target="_blank" class="link-btn">🔧 打開後台管理</a>
+    </div>
+
+    <button onclick="testLogin()">測試登入功能</button>
+    <button onclick="checkRLSPolicy()">檢查 RLS 策略</button>
+    <button onclick="verifyAdminAccount()">驗證管理員帳號</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://kwxlxjfcdghpguypadvi.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3eGx4amZjZGdocGd1eXBhZHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3ODk5NTMsImV4cCI6MjA4NDM2NTk1M30.0KJIXhxlPOx-5tWQyX12DMNXcWCLc2NmMCyoJY4y024';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function log(message, type = 'info') {
+      const result = document.getElementById('result');
+      result.className = type;
+      result.textContent = message;
+      console.log(message);
+    }
+
+    async function testLogin() {
+      log('🔐 正在測試登入功能...', 'info');
+      
+      try {
+        // 先登出（如果已登入）
+        await supabase.auth.signOut();
+
+        // 測試登入
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: '123@admin.com',
+          password: '123456',
+        });
+
+        if (error) {
+          log(`❌ 登入失敗: ${error.message}\n\n可能的原因：\n1. 密碼尚未修改為 123456\n2. 用戶不存在\n3. 帳號未確認\n\n請檢查 Supabase Dashboard 中的用戶設置`, 'error');
+          return;
+        }
+
+        if (!data.user) {
+          log('❌ 登入失敗：未返回用戶資料', 'error');
+          return;
+        }
+
+        // 檢查是否為管理員（這是之前會出錯的地方）
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        let message = '✅ 登入測試成功！\n\n';
+        message += `📝 用戶資訊:\n`;
+        message += `   用戶 ID: ${data.user.id}\n`;
+        message += `   Email: ${data.user.email}\n`;
+        message += `   管理員狀態: ${adminData ? '✅ 是管理員' : '❌ 不是管理員'}\n\n`;
+
+        if (adminError) {
+          message += `⚠️ 查詢管理員狀態時發生錯誤: ${adminError.message}\n`;
+          message += `這表示 RLS 策略可能還有問題\n`;
+        } else if (!adminData) {
+          message += `⚠️ 用戶已登入，但不是管理員！\n`;
+          message += `請在 Supabase SQL Editor 中執行：\n`;
+          message += `INSERT INTO public.admins (user_id)\n`;
+          message += `SELECT id FROM auth.users WHERE email = '123@admin.com'\n`;
+          message += `ON CONFLICT (user_id) DO NOTHING;\n`;
+        } else {
+          message += `🎉 所有測試通過！\n`;
+          message += `✅ 登入功能正常\n`;
+          message += `✅ RLS 策略已修復\n`;
+          message += `✅ 管理員權限正常\n`;
+          message += `\n💡 現在可以正常使用後台管理功能了！\n`;
+          message += `訪問：http://localhost:5174/admin`;
+        }
+
+        log(message, adminData && !adminError ? 'success' : 'error');
+
+        // 登出
+        await supabase.auth.signOut();
+      } catch (error) {
+        log(`❌ 錯誤: ${error.message}`, 'error');
+      }
+    }
+
+    async function checkRLSPolicy() {
+      log('🔍 正在檢查 RLS 策略...', 'info');
+      
+      try {
+        // 嘗試查詢 admins 表（不登入的情況下應該會失敗，但不會是 500 錯誤）
+        const { data, error } = await supabase
+          .from('admins')
+          .select('*')
+          .limit(1);
+
+        let message = '📊 RLS 策略檢查結果\n\n';
+
+        if (error) {
+          if (error.code === 'PGRST116' || error.message.includes('permission denied')) {
+            message += '✅ RLS 策略正常運作（未登入時無法查詢，這是預期行為）\n';
+            message += `   錯誤類型: ${error.code || 'Permission Denied'}\n`;
+            message += `   這不是 500 錯誤，表示 RLS 策略已正確設置\n\n`;
+            message += '💡 現在請登入後再測試，應該不會出現 500 錯誤了\n';
+          } else if (error.message.includes('500') || error.code === '500') {
+            message += '❌ 仍然出現 500 錯誤！\n';
+            message += `   錯誤訊息: ${error.message}\n\n`;
+            message += '請確認：\n';
+            message += '1. 是否已執行 fix_admins_rls.sql 中的 SQL\n';
+            message += '2. 是否已刪除舊的 RLS 策略\n';
+            message += '3. 是否已創建新的 RLS 策略\n';
+          } else {
+            message += `ℹ️ 查詢結果: ${error.message}\n`;
+            message += `   錯誤代碼: ${error.code || 'N/A'}\n`;
+          }
+        } else {
+          message += '⚠️ 未登入時可以查詢 admins 表\n';
+          message += '這可能表示 RLS 策略設置有問題\n';
+        }
+
+        log(message, error && !error.message.includes('500') ? 'success' : 'info');
+      } catch (error) {
+        log(`❌ 錯誤: ${error.message}`, 'error');
+      }
+    }
+
+    async function verifyAdminAccount() {
+      log('🔍 正在驗證管理員帳號...', 'info');
+      
+      try {
+        // 先登入
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: '123@admin.com',
+          password: '123456',
+        });
+
+        if (authError) {
+          log(`❌ 無法登入: ${authError.message}\n\n請確認：\n1. 用戶是否已創建\n2. 密碼是否為 123456\n3. 用戶是否已確認`, 'error');
+          return;
+        }
+
+        // 查詢管理員記錄
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('*')
+          .eq('user_id', authData.user.id)
+          .maybeSingle();
+
+        let message = '📊 管理員帳號驗證結果\n\n';
+        message += `✅ 用戶登入: 成功\n`;
+        message += `   用戶 ID: ${authData.user.id}\n`;
+        message += `   Email: ${authData.user.email}\n\n`;
+
+        if (adminError) {
+          message += `❌ 查詢管理員記錄失敗: ${adminError.message}\n`;
+          if (adminError.message.includes('500')) {
+            message += `\n⚠️ 仍然出現 500 錯誤！\n`;
+            message += `請確認 RLS 策略是否已正確修復\n`;
+          }
+        } else if (adminData) {
+          message += `✅ 管理員記錄: 存在\n`;
+          message += `   管理員 ID: ${adminData.id}\n`;
+          message += `   創建時間: ${new Date(adminData.created_at).toLocaleString('zh-TW')}\n\n`;
+          message += `🎉 管理員帳號設置完整！\n`;
+          message += `可以正常使用後台管理功能了！\n`;
+        } else {
+          message += `⚠️ 管理員記錄: 不存在\n`;
+          message += `請在 Supabase SQL Editor 中執行：\n`;
+          message += `INSERT INTO public.admins (user_id)\n`;
+          message += `SELECT id FROM auth.users WHERE email = '123@admin.com'\n`;
+          message += `ON CONFLICT (user_id) DO NOTHING;\n`;
+        }
+
+        log(message, adminData && !adminError ? 'success' : 'error');
+
+        // 登出
+        await supabase.auth.signOut();
+      } catch (error) {
+        log(`❌ 錯誤: ${error.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
