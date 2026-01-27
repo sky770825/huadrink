@@ -43,7 +43,7 @@ export default function AdminDashboard() {
 
       <main className="container mx-auto flex-1 px-4 py-8">
         {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 md:gap-4 mb-6">
           <StatsCard title="總報名人數" value={stats.totalHeadcount} icon={Users} color="gold" />
           <StatsCard title="已付款" value={stats.paid} icon={CreditCard} color="green" />
           <StatsCard title="未付款" value={stats.unpaid} icon={AlertCircle} color="red" />

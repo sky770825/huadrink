@@ -19,11 +19,11 @@ const colorClasses = {
 
 export function StatsCard({ title, value, icon: Icon, color = 'default' }: StatsCardProps) {
   return (
-    <div className="glass-card rounded-xl p-6">
-      <div className="flex items-center justify-between">
+    <div className="glass-card rounded-xl p-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-muted-foreground mb-1">{title}</p>
-          <p className="font-serif text-3xl font-semibold text-foreground">{value}</p>
+          <p className="text-xs text-muted-foreground mb-1">{title}</p>
+          <p className="font-serif text-2xl font-semibold text-foreground leading-tight">{value}</p>
         </div>
         <div className={cn('p-3 rounded-xl', colorClasses[color])}>
           <Icon className="w-6 h-6" strokeWidth={1.5} />
