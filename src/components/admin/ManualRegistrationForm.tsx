@@ -180,12 +180,17 @@ export function ManualRegistrationForm() {
                 <FormItem>
                   <FormLabel>選擇內部成員 *</FormLabel>
                   <Select
-                    value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
+                    value={
+                      field.value !== undefined && field.value !== null
+                        ? field.value.toString()
+                        : ''
+                    }
                     onValueChange={(value) => {
                       const memberId = parseInt(value);
                       field.onChange(memberId);
-                      const member = MEMBERS.find(m => m.id === memberId);
+                      const member = MEMBERS.find((m) => m.id === memberId);
                       if (member) {
+                        // 預設帶入成員姓名，但仍允許後續手動調整
                         form.setValue('contact_name', member.name);
                       }
                     }}
@@ -195,10 +200,17 @@ export function ManualRegistrationForm() {
                         <SelectValue placeholder="選擇內部成員" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px]">
                       {MEMBERS.map((member) => (
                         <SelectItem key={member.id} value={member.id.toString()}>
-                          {member.name} ({member.specialty})
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              {member.id}. {member.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {member.specialty}
+                            </span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -221,7 +233,6 @@ export function ManualRegistrationForm() {
                     {...field}
                     placeholder="請輸入聯絡人姓名"
                     className="input-luxury"
-                    disabled={watchType === 'internal'}
                   />
                 </FormControl>
                 <FormMessage />

@@ -98,7 +98,7 @@ export default function Index() {
             <div className="space-y-3 text-muted-foreground">
               {/* Mobile layout */}
               <div className="sm:hidden space-y-2">
-                <p className="text-base font-medium">
+                <p className="text-lg font-medium whitespace-nowrap">
                   報名截止：
                   <span className="text-primary font-semibold"> {EVENT_INFO.deadlineDisplay}</span>
                 </p>
@@ -106,7 +106,7 @@ export default function Index() {
                   <span className="text-primary font-semibold tracking-wide text-sm">
                     倒數
                   </span>
-                  <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-3 py-1.5 text-base shadow-sm whitespace-nowrap">
+                  <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-3 py-1.5 text-sm shadow-sm whitespace-nowrap">
                     {countdown.isExpired ? (
                       <span className="text-destructive font-semibold">報名已截止</span>
                     ) : (
