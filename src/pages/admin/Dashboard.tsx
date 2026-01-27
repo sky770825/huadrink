@@ -8,7 +8,19 @@ import { SeatingManager } from '@/components/admin/SeatingManager';
 import { ManualRegistrationForm } from '@/components/admin/ManualRegistrationForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Diamond, Users, CreditCard, AlertCircle, Crown, UserPlus, Clock, LogOut, Loader2 } from 'lucide-react';
+import {
+  Diamond,
+  Users,
+  CreditCard,
+  AlertCircle,
+  Crown,
+  UserPlus,
+  Clock,
+  LogOut,
+  Loader2,
+  Utensils,
+  Leaf,
+} from 'lucide-react';
 
 export default function AdminDashboard() {
   const { isLoading: authLoading } = useRequireAdmin();
@@ -52,6 +64,18 @@ export default function AdminDashboard() {
           <StatsCard title="內部夥伴" value={stats.internal} icon={Users} color="default" />
           <StatsCard title="候補" value={stats.waitlist} icon={Clock} color="default" />
         </div>
+
+        {/* Diet stats */}
+        <section className="mb-8 space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">飲食需求統計（人數）</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+            <StatsCard title="一般葷食" value={stats.dietNormal} icon={Utensils} color="default" />
+            <StatsCard title="素食" value={stats.dietVegetarian} icon={Leaf} color="green" />
+            <StatsCard title="不吃牛" value={stats.dietNoBeef} icon={Utensils} color="gold" />
+            <StatsCard title="不吃豬" value={stats.dietNoPork} icon={Utensils} color="purple" />
+            <StatsCard title="其他需求" value={stats.dietOther} icon={AlertCircle} color="red" />
+          </div>
+        </section>
 
         {/* Tabs */}
         <Tabs defaultValue="list" className="space-y-6">

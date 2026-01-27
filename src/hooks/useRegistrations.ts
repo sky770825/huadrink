@@ -151,6 +151,11 @@ export function useRegistrationStats() {
     external: 0,
     internal: 0,
     waitlist: 0,
+    dietNormal: 0,
+    dietVegetarian: 0,
+    dietNoBeef: 0,
+    dietNoPork: 0,
+    dietOther: 0,
   };
 
   if (registrations) {
@@ -158,13 +163,32 @@ export function useRegistrationStats() {
       if (reg.status !== 'waitlist') {
         stats.total++;
         stats.totalHeadcount += reg.headcount;
-        
+
         if (reg.pay_status === 'paid') stats.paid += reg.headcount;
         else stats.unpaid += reg.headcount;
-        
+
         if (reg.type === 'vip') stats.vip += reg.headcount;
         else if (reg.type === 'external') stats.external += reg.headcount;
         else stats.internal += reg.headcount;
+
+        // 飲食需求統計（以人數計）
+        switch (reg.diet) {
+          case 'normal':
+            stats.dietNormal += reg.headcount;
+            break;
+          case 'vegetarian':
+            stats.dietVegetarian += reg.headcount;
+            break;
+          case 'no_beef':
+            stats.dietNoBeef += reg.headcount;
+            break;
+          case 'no_pork':
+            stats.dietNoPork += reg.headcount;
+            break;
+          case 'other':
+            stats.dietOther += reg.headcount;
+            break;
+        }
       } else {
         stats.waitlist += reg.headcount;
       }
