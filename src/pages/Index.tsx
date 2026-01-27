@@ -106,7 +106,7 @@ export default function Index() {
                   <span className="text-primary font-semibold tracking-wide text-sm">
                     倒數
                   </span>
-                  <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-4 py-2 text-lg shadow-sm">
+                  <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-3 py-1.5 text-base shadow-sm whitespace-nowrap">
                     {countdown.isExpired ? (
                       <span className="text-destructive font-semibold">報名已截止</span>
                     ) : (
@@ -126,21 +126,21 @@ export default function Index() {
                   報名截止：
                   <span className="text-primary font-semibold"> {EVENT_INFO.deadlineDisplay}</span>
                 </p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-primary font-semibold tracking-wide">
-                    倒數
-                  </span>
-                  <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-5 py-2.5 text-lg shadow-sm">
-                    {countdown.isExpired ? (
-                      <span className="text-destructive font-semibold">報名已截止</span>
-                    ) : (
+                <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-5 py-2.5 text-lg shadow-sm whitespace-nowrap">
+                  {countdown.isExpired ? (
+                    <span className="text-destructive font-semibold">報名已截止</span>
+                  ) : (
+                    <>
+                      <span className="text-primary font-semibold tracking-wide mr-2">
+                        倒數
+                      </span>
                       <span className="tabular-nums tracking-wide font-semibold">
                         {countdown.days} 天 {countdown.hours.toString().padStart(2, '0')} 時{' '}
                         {countdown.minutes.toString().padStart(2, '0')} 分{' '}
                         {countdown.seconds.toString().padStart(2, '0')} 秒
                       </span>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
