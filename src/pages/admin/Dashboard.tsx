@@ -6,6 +6,7 @@ import { RegistrationTable } from '@/components/admin/RegistrationTable';
 import { RegistrationDetailModal } from '@/components/admin/RegistrationDetailModal';
 import { SeatingManager } from '@/components/admin/SeatingManager';
 import { ManualRegistrationForm } from '@/components/admin/ManualRegistrationForm';
+import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -160,6 +161,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="list" className="text-xs sm:text-sm px-3 py-1.5">名單管理</TabsTrigger>
             <TabsTrigger value="add" className="text-xs sm:text-sm px-3 py-1.5">提交名單</TabsTrigger>
             <TabsTrigger value="seating" className="text-xs sm:text-sm px-3 py-1.5">座位安排</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs sm:text-sm px-3 py-1.5">系統設定</TabsTrigger>
           </TabsList>
 
           <TabsContent value="list">
@@ -175,6 +177,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="seating">
             <SeatingManager />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <SystemSettingsPanel />
           </TabsContent>
         </Tabs>
       </main>

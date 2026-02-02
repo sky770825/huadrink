@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Diamond, ArrowRight, CalendarDays, Clock, Users, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EVENT_INFO } from '@/lib/constants';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 type CountdownState = {
   days: number;
@@ -12,7 +13,22 @@ type CountdownState = {
   isExpired: boolean;
 };
 
+/** 將 ISO 截止時間轉成前台顯示用：M/D（週X，含） */
+function formatDeadlineDisplay(deadline: string): string {
+  if (!deadline) return EVENT_INFO.deadlineDisplay;
+  const d = new Date(deadline);
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+  const w = weekdays[d.getDay()];
+  return `${m}/${day}（週${w}，含）`;
+}
+
 export default function Index() {
+  const { data: settings } = useSystemSettings();
+  const deadlineSource = settings?.deadline || EVENT_INFO.deadline;
+  const deadlineDisplay = settings?.deadline ? formatDeadlineDisplay(settings.deadline) : EVENT_INFO.deadlineDisplay;
+
   const [countdown, setCountdown] = useState<CountdownState>({
     days: 0,
     hours: 0,
@@ -22,11 +38,12 @@ export default function Index() {
   });
 
   useEffect(() => {
-    const deadline = new Date(EVENT_INFO.deadline).getTime();
+    const deadlineMs = new Date(deadlineSource).getTime();
+    if (!deadlineSource || Number.isNaN(deadlineMs)) return;
 
     const updateCountdown = () => {
       const now = Date.now();
-      const diff = deadline - now;
+      const diff = deadlineMs - now;
 
       if (diff <= 0) {
         setCountdown((prev) => ({ ...prev, isExpired: true }));
@@ -51,7 +68,7 @@ export default function Index() {
     const timer = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [deadlineSource]);
 
   return (
     <div className="min-h-screen marble-bg flex flex-col overflow-x-hidden">
@@ -100,7 +117,7 @@ export default function Index() {
               <div className="sm:hidden space-y-2">
                 <p className="text-lg font-medium whitespace-nowrap">
                   報名截止：
-                  <span className="text-primary font-semibold"> {EVENT_INFO.deadlineDisplay}</span>
+                  <span className="text-primary font-semibold"> {deadlineDisplay}</span>
                 </p>
                 <div className="flex flex-col items-center gap-2">
                   <span className="text-primary font-semibold tracking-wide text-sm">
@@ -124,7 +141,7 @@ export default function Index() {
               <div className="hidden sm:block space-y-1 text-base">
                 <p className="text-lg">
                   報名截止：
-                  <span className="text-primary font-semibold"> {EVENT_INFO.deadlineDisplay}</span>
+                  <span className="text-primary font-semibold"> {deadlineDisplay}</span>
                 </p>
                 <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-5 py-2.5 text-lg shadow-sm whitespace-nowrap">
                   {countdown.isExpired ? (

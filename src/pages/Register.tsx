@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -95,6 +95,22 @@ export default function Register() {
   const { data: settings, isLoading: settingsLoading } = useSystemSettings();
   const { toast } = useToast();
 
+  // 抑制 Supabase 內部 fetch 拋出的 AbortError 在主控台顯示「Uncaught (in promise)」（錯誤仍由下方 try/catch 處理並顯示 toast）
+  useEffect(() => {
+    const handler = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      const isAbort =
+        reason != null &&
+        typeof reason === 'object' &&
+        ((reason as { name?: string }).name === 'AbortError' ||
+          (typeof (reason as { message?: string }).message === 'string' &&
+            /abort|signal is aborted/i.test((reason as { message: string }).message)));
+      if (isAbort) event.preventDefault();
+    };
+    window.addEventListener('unhandledrejection', handler);
+    return () => window.removeEventListener('unhandledrejection', handler);
+  }, []);
+
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(fullSchema),
     defaultValues: {
@@ -171,6 +187,17 @@ export default function Register() {
 
 
   const onSubmit = async (data: RegistrationFormData) => {
+    // 送出前再次檢查報名截止日（與後台同步，避免表單開著過期仍送出）
+    const deadlineToCheck = settings?.deadline;
+    if (deadlineToCheck && isDeadlinePassed(deadlineToCheck)) {
+      toast({
+        title: '報名已截止',
+        description: '目前僅開放候補登記，請使用下方表單或聯繫主辦單位。',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -203,16 +230,16 @@ export default function Register() {
         invoice_title: data.invoice_title || null,
         invoice_tax_id: data.invoice_tax_id || null,
         pay_method: 'transfer' as const,
-        pay_status: 'paid' as const,
+        pay_status: 'unpaid' as const,
         pay_proof_url: null,
         status: 'open' as const,
       };
 
-      const { data: result, error } = await supabase
-        .from('registrations')
-        .insert(insertData)
-        .select()
-        .single();
+      const insertPromise = Promise.resolve(
+        supabase.from('registrations').insert(insertData).select().single()
+      );
+      insertPromise.catch(() => {}); // 避免 AbortError 被當成 Uncaught (in promise)
+      const { data: result, error } = await insertPromise;
       if (error) throw error;
 
       // Convert database result to Registration type
@@ -252,14 +279,20 @@ export default function Register() {
 
     } catch (error) {
       console.error('Submit error:', error);
-      const message =
-        error && typeof error === 'object' && 'message' in error
-          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (error as any).message
-          : '請稍後再試或聯繫主辦單位';
+      const err = error as { name?: string; message?: string } | undefined;
+      const isAborted = err && (
+        err.name === 'AbortError' ||
+        (typeof err.message === 'string' && /abort|signal is aborted/i.test(err.message))
+      );
+      const message = isAborted
+        ? '連線已中斷或請求已取消，請再試一次。'
+        : (error && typeof error === 'object' && 'message' in error
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (error as any).message
+            : '請稍後再試或聯繫主辦單位');
 
       toast({
-        title: '報名失敗',
+        title: isAborted ? '請求已取消' : '報名失敗',
         description: message,
         variant: 'destructive',
       });
@@ -291,11 +324,11 @@ export default function Register() {
         admin_note: data.note || null,
       };
 
-      const { data: result, error } = await supabase
-        .from('registrations')
-        .insert(insertData)
-        .select()
-        .single();
+      const waitlistPromise = Promise.resolve(
+        supabase.from('registrations').insert(insertData).select().single()
+      );
+      waitlistPromise.catch(() => {}); // 避免 AbortError 被當成 Uncaught (in promise)
+      const { data: result, error } = await waitlistPromise;
 
       if (error) throw error;
 
@@ -335,14 +368,20 @@ export default function Register() {
 
     } catch (error) {
       console.error('Submit error:', error);
-      const message =
-        error && typeof error === 'object' && 'message' in error
-          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (error as any).message
-          : '請稍後再試或聯繫主辦單位';
+      const err = error as { name?: string; message?: string } | undefined;
+      const isAborted = err && (
+        err.name === 'AbortError' ||
+        (typeof err.message === 'string' && /abort|signal is aborted/i.test(err.message))
+      );
+      const message = isAborted
+        ? '連線已中斷或請求已取消，請再試一次。'
+        : (error && typeof error === 'object' && 'message' in error
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (error as any).message
+            : '請稍後再試或聯繫主辦單位');
 
       toast({
-        title: '登記失敗',
+        title: isAborted ? '請求已取消' : '登記失敗',
         description: message,
         variant: 'destructive',
       });
