@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRequireAdmin, useAuth } from '@/hooks/useAuth';
 import { useRegistrations, useRegistrationStats } from '@/hooks/useRegistrations';
 import { StatsCard } from '@/components/admin/StatsCard';
@@ -8,6 +8,8 @@ import { SeatingManager } from '@/components/admin/SeatingManager';
 import { ManualRegistrationForm } from '@/components/admin/ManualRegistrationForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getUnregisteredInternalMembers } from '@/lib/members';
 import {
   Diamond,
   Users,
@@ -15,6 +17,7 @@ import {
   AlertCircle,
   Crown,
   UserPlus,
+  UserMinus,
   Clock,
   LogOut,
   Loader2,
@@ -28,6 +31,12 @@ export default function AdminDashboard() {
   const { data: registrations, isLoading } = useRegistrations();
   const stats = useRegistrationStats();
   const [selectedRegistrationId, setSelectedRegistrationId] = useState<string | null>(null);
+  const [showUnregisteredModal, setShowUnregisteredModal] = useState(false);
+
+  const unregisteredInternalMembers = useMemo(
+    () => getUnregisteredInternalMembers(registrations || []),
+    [registrations]
+  );
 
   if (authLoading || isLoading) {
     return (
@@ -64,6 +73,74 @@ export default function AdminDashboard() {
           <StatsCard title="內部夥伴" value={stats.internal} icon={Users} color="default" />
           <StatsCard title="候補" value={stats.waitlist} icon={Clock} color="default" />
         </div>
+
+        {/* Internal members: registered vs not registered (by name match) */}
+        <section className="mb-8 space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            內部成員報名狀況（依聯絡人姓名與名單比對，僅供參考）
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 md:gap-4">
+            <StatsCard
+              title="已報名內部人數"
+              value={stats.internalRegisteredCount}
+              icon={Users}
+              color="default"
+            />
+            <button
+              type="button"
+              onClick={() => setShowUnregisteredModal(true)}
+              className="glass-card rounded-xl p-4 text-left cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
+              title="點擊查看未報名內部成員名單"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    未報名內部人數
+                    <span className="ml-1 text-[10px] text-primary">（點擊查看名單）</span>
+                  </p>
+                  <p className="font-serif text-2xl font-semibold text-foreground leading-tight">
+                    {stats.internalNotRegisteredCount}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-red-500/10 text-red-600">
+                  <UserMinus className="w-6 h-6" strokeWidth={1.5} />
+                </div>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        {/* 未報名內部成員名單彈窗 */}
+        <Dialog open={showUnregisteredModal} onOpenChange={setShowUnregisteredModal}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>未報名內部成員名單（依姓名比對，僅供參考）</DialogTitle>
+            </DialogHeader>
+            <div className="overflow-auto flex-1 -mx-6 px-6">
+              {unregisteredInternalMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4">目前無未報名內部成員。</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {unregisteredInternalMembers.map((m) => (
+                    <li
+                      key={m.id}
+                      className="flex items-center gap-4 py-2 border-b border-border/50 last:border-0"
+                    >
+                      <span className="font-mono font-medium w-10 text-muted-foreground">
+                        {m.id}.
+                      </span>
+                      <span className="font-medium">{m.name}</span>
+                      <span className="text-muted-foreground truncate flex-1">{m.specialty}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground pt-2 border-t border-border/50">
+              共 {unregisteredInternalMembers.length} 人（依聯絡人姓名與內部名單比對，姓名不符者不會列入）
+            </p>
+          </DialogContent>
+        </Dialog>
 
         {/* Diet stats */}
         <section className="mb-8 space-y-3">

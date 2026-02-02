@@ -117,6 +117,8 @@ export default function Register() {
       diet_other: '',
       allergy_note: '',
       photo_consent: true,
+      pay_method: 'transfer',
+      pay_status: 'unpaid',
     },
     mode: 'onChange',
   });

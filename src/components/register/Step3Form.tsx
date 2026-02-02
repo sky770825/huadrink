@@ -3,7 +3,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/comp
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { FormSection } from './FormCard';
-import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/constants';
+import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_INSTRUCTIONS } from '@/lib/constants';
 import { Upload, FileImage, X } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -147,6 +147,21 @@ export function Step3Form({ form }: Step3FormProps) {
         </FormSection>
       )}
 
+      {/* 匯款資訊 */}
+      <div className="p-6 rounded-xl bg-muted/30 border border-border/50 space-y-3">
+        <h4 className="font-medium text-foreground">匯款資訊</h4>
+        <ul className="text-sm text-muted-foreground space-y-1">
+          <li>銀行：{PAYMENT_INSTRUCTIONS.bankName}</li>
+          {PAYMENT_INSTRUCTIONS.bankCode ? (
+            <li>代碼：{PAYMENT_INSTRUCTIONS.bankCode}</li>
+          ) : null}
+          <li>帳號：{PAYMENT_INSTRUCTIONS.accountNumber}</li>
+          <li>戶名：{PAYMENT_INSTRUCTIONS.accountName}</li>
+          <li>金額：{PAYMENT_INSTRUCTIONS.amount}</li>
+        </ul>
+        <p className="text-xs text-muted-foreground pt-1">{PAYMENT_INSTRUCTIONS.note}</p>
+      </div>
+
       {/* Important Notice */}
       <div className="p-6 rounded-xl bg-primary/5 border border-primary/20">
         <div className="flex items-start gap-3">
@@ -154,7 +169,7 @@ export function Step3Form({ form }: Step3FormProps) {
           <div>
             <h4 className="font-medium text-foreground mb-1">付款提醒</h4>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              請於 <span className="text-primary font-medium">1/31（含）</span> 前完成付款，
+              請於 <span className="text-primary font-medium">{PAYMENT_INSTRUCTIONS.deadline}</span> 前完成付款，
               逾期將視為候補報名。付款後請上傳憑證以加速確認流程。
             </p>
           </div>

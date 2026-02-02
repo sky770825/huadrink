@@ -10,6 +10,8 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  /** 幾毫秒後自動關閉（不傳則不自動關閉） */
+  duration?: number;
 };
 
 const actionTypes = {
@@ -134,7 +136,7 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">;
 
-function toast({ ...props }: Toast) {
+function toast({ duration, ...props }: Toast) {
   const id = genId();
 
   const update = (props: ToasterToast) =>
@@ -155,6 +157,10 @@ function toast({ ...props }: Toast) {
       },
     },
   });
+
+  if (typeof duration === "number" && duration > 0) {
+    setTimeout(dismiss, duration);
+  }
 
   return {
     id: id,

@@ -106,7 +106,7 @@ export function ManualRegistrationForm() {
         invoice_title: null,
         invoice_tax_id: null,
         pay_method: 'transfer',
-        pay_status: 'paid',
+        pay_status: 'unpaid',
         pay_proof_url: null,
         status: 'open',
         admin_note: data.admin_note || null,

@@ -132,3 +132,36 @@ export function getMemberById(id: number): Member | undefined {
 export function getMemberByName(name: string): Member | undefined {
   return MEMBERS.find(m => m.name === name);
 }
+
+/**
+ * 依聯絡人姓名與內部名單比對，取得對應的內部成員（用於顯示編號）
+ * 比對時會忽略多餘空白，並支援姓名包含關係
+ */
+export function getMemberByContactName(contactName: string): Member | undefined {
+  if (!contactName?.trim()) return undefined;
+  const name = contactName.trim().replace(/\s+/g, '');
+  return MEMBERS.find(
+    (m) =>
+      m.name.replace(/\s+/g, '') === name ||
+      name.includes(m.name.replace(/\s+/g, '')) ||
+      m.name.replace(/\s+/g, '').includes(name)
+  );
+}
+
+/** 報名資料中與內部比對所需的最小欄位 */
+export type RegistrationForUnregistered = { type: string; contact_name?: string | null };
+
+/**
+ * 依報名名單計算「未報名的內部成員」列表（依聯絡人姓名與名單比對，僅供參考）
+ */
+export function getUnregisteredInternalMembers(
+  registrations: RegistrationForUnregistered[]
+): Member[] {
+  const registeredIds = new Set<number>();
+  registrations.forEach((reg) => {
+    if (reg.type !== 'internal' || !reg.contact_name) return;
+    const member = getMemberByContactName(reg.contact_name);
+    if (member) registeredIds.add(member.id);
+  });
+  return MEMBERS.filter((m) => !registeredIds.has(m.id));
+}

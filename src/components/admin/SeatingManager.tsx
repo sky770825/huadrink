@@ -8,6 +8,7 @@ import { useRegistrations, useUpdateRegistration } from '@/hooks/useRegistration
 import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { REGISTRATION_TYPE_LABELS, SEAT_ZONE_LABELS } from '@/lib/constants';
+import { getMemberByContactName } from '@/lib/members';
 import { Loader2, Wand2, Save } from 'lucide-react';
 import type { Registration, SeatZone } from '@/types/registration';
 
@@ -237,7 +238,14 @@ export function SeatingManager() {
                       onDragEnd={() => setDraggingRegId(null)}
                     >
                       <div>
-                        <span className="font-medium">{reg.contact_name}</span>
+                        <span className="font-medium">
+                          {reg.type === 'internal'
+                            ? (() => {
+                                const member = getMemberByContactName(reg.contact_name);
+                                return member ? `${member.id}. ${reg.contact_name}` : reg.contact_name;
+                              })()
+                            : reg.contact_name}
+                        </span>
                         <span className="text-muted-foreground ml-2">×{reg.headcount}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -288,7 +296,14 @@ export function SeatingManager() {
                   <Badge variant="outline">
                     {reg.type === 'vip' ? 'VIP' : reg.type === 'internal' ? '內部' : '外部'}
                   </Badge>
-                  <span className="font-medium">{reg.contact_name}</span>
+                  <span className="font-medium">
+                    {reg.type === 'internal'
+                      ? (() => {
+                          const member = getMemberByContactName(reg.contact_name);
+                          return member ? `${member.id}. ${reg.contact_name}` : reg.contact_name;
+                        })()
+                      : reg.contact_name}
+                  </span>
                   <span className="text-muted-foreground">({reg.company})</span>
                   <span className="text-muted-foreground">×{reg.headcount}</span>
                 </div>

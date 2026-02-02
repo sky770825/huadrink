@@ -2,6 +2,7 @@ import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { REGISTRATION_TYPE_LABELS, EVENT_INFO } from '@/lib/constants';
+import { getMemberByContactName } from '@/lib/members';
 import type { Registration } from '@/types/registration';
 import { Link } from 'react-router-dom';
 
@@ -55,7 +56,16 @@ export function SuccessPage({ registration }: SuccessPageProps) {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">聯絡人</span>
-                <span className="font-medium">{registration.contact_name}</span>
+                <span className="font-medium">
+                  {registration.type === 'internal'
+                    ? (() => {
+                        const member = getMemberByContactName(registration.contact_name);
+                        return member
+                          ? `編號 ${member.id} － ${registration.contact_name}`
+                          : registration.contact_name;
+                      })()
+                    : registration.contact_name}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">報名狀態</span>

@@ -10,7 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { useRegistration, useUpdateRegistration } from '@/hooks/useRegistrations';
 import { useToast } from '@/hooks/use-toast';
 import { REGISTRATION_TYPE_LABELS, DIET_TYPE_LABELS, PAYMENT_STATUS_LABELS, SEAT_ZONE_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/constants';
-import { Loader2, Save, ExternalLink } from 'lucide-react';
+import { getMemberByContactName } from '@/lib/members';
+import { Loader2, Save, ExternalLink, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import type { PaymentStatus, SeatZone } from '@/types/registration';
 
@@ -54,12 +55,15 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
       toast({
         title: '儲存成功',
         description: '報名資料已更新',
+        duration: 3000,
       });
+      handleClose();
     } catch (error) {
       toast({
         title: '儲存失敗',
         description: '請稍後再試',
         variant: 'destructive',
+        duration: 4000,
       });
     }
   };
@@ -105,7 +109,14 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
               </div>
               <div>
                 <Label className="text-muted-foreground">聯絡人</Label>
-                <p className="font-medium">{registration.contact_name}</p>
+                <p className="font-medium">
+                  {registration.type === 'internal' ? (() => {
+                    const member = getMemberByContactName(registration.contact_name);
+                    return member
+                      ? `編號 ${member.id} － ${registration.contact_name}`
+                      : registration.contact_name;
+                  })() : registration.contact_name}
+                </p>
               </div>
               <div>
                 <Label className="text-muted-foreground">手機</Label>
@@ -168,6 +179,17 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
 
             <Separator />
 
+            {/* 收款說明 */}
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3">
+              <CreditCard className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-foreground mb-1">收款／核准</p>
+                <p className="text-muted-foreground">
+                  確認收到款項後，請將付款狀態改為「已付款」並點擊儲存；或直接點「確認已收款」一鍵核准。
+                </p>
+              </div>
+            </div>
+
             {/* Payment Info */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -199,7 +221,8 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label>付款狀態</Label>
-                  <Select value={payStatus} onValueChange={(v) => setPayStatus(v as PaymentStatus)}>
+                  <div className="flex items-center gap-2">
+                    <Select value={payStatus} onValueChange={(v) => setPayStatus(v as PaymentStatus)}>
                     <SelectTrigger className="input-luxury">
                       <SelectValue />
                     </SelectTrigger>
@@ -208,6 +231,50 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
                       <SelectItem value="unpaid">未付款</SelectItem>
                     </SelectContent>
                   </Select>
+                    {payStatus === 'unpaid' && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="gap-1.5 shrink-0"
+                        disabled={updateMutation.isPending}
+                        onClick={async () => {
+                          if (!registrationId) return;
+                          try {
+                            await updateMutation.mutateAsync({
+                              id: registrationId,
+                              updates: {
+                                pay_status: 'paid',
+                                seat_zone: seatZone as SeatZone || null,
+                                table_no: tableNo ? parseInt(tableNo) : null,
+                                admin_note: adminNote || null,
+                              },
+                            });
+                            setPayStatus('paid');
+                            toast({
+                              title: '已核准收款',
+                              description: '付款狀態已改為「已付款」。',
+                              duration: 3000,
+                            });
+                            handleClose();
+                          } catch (e) {
+                            toast({
+                              title: '更新失敗',
+                              description: e instanceof Error ? e.message : '請稍後再試',
+                              variant: 'destructive',
+                              duration: 4000,
+                            });
+                          }
+                        }}
+                      >
+                        {updateMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CreditCard className="w-4 h-4" />
+                        )}
+                        確認已收款
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label>座位區</Label>

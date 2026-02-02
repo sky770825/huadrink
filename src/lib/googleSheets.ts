@@ -6,6 +6,7 @@ import {
   PAYMENT_STATUS_LABELS,
   SEAT_ZONE_LABELS 
 } from '@/lib/constants';
+import { getMemberByContactName } from '@/lib/members';
 
 // Google Sheets API 配置
 const GOOGLE_SHEETS_API_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -24,6 +25,8 @@ function formatRegistrationForSheet(reg: Registration, index: number): string[] 
     return a.name;
   }).join('、');
 
+  const internalMember = reg.type === 'internal' ? getMemberByContactName(reg.contact_name) : undefined;
+
   return [
     (index + 1).toString(), // 序號
     reg.ref_code, // 報名編號
@@ -33,6 +36,7 @@ function formatRegistrationForSheet(reg: Registration, index: number): string[] 
     reg.company, // 公司
     reg.title || '', // 職稱
     reg.contact_name, // 聯絡人
+    reg.type === 'internal' && internalMember ? internalMember.id.toString() : '', // 內部編號
     reg.phone, // 電話
     reg.email || '', // Email
     reg.line_id || '', // LINE ID
@@ -68,6 +72,7 @@ function generateHeaders(): string[] {
     '公司',
     '職稱',
     '聯絡人',
+    '內部編號',
     '電話',
     'Email',
     'LINE ID',

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Registration, Attendee } from '@/types/registration';
 import type { Json } from '@/integrations/supabase/types';
+import { MEMBERS } from '@/lib/members';
 
 function parseAttendeeList(data: Json | null): Attendee[] {
   if (!data || !Array.isArray(data)) return [];
@@ -156,9 +157,15 @@ export function useRegistrationStats() {
     dietNoBeef: 0,
     dietNoPork: 0,
     dietOther: 0,
+    /** 依聯絡人姓名與內部名單比對，已報名的內部成員人數（不重複） */
+    internalRegisteredCount: 0,
+    /** 內部成員總數中尚未報名的人數（僅供參考） */
+    internalNotRegisteredCount: MEMBERS.length,
   };
 
   if (registrations) {
+    const registeredInternalMemberIds = new Set<number>();
+
     registrations.forEach((reg) => {
       if (reg.status !== 'waitlist') {
         stats.total++;
@@ -170,6 +177,18 @@ export function useRegistrationStats() {
         if (reg.type === 'vip') stats.vip += reg.headcount;
         else if (reg.type === 'external') stats.external += reg.headcount;
         else stats.internal += reg.headcount;
+
+        // 內部報名：以聯絡人姓名與內部成員名單比對，記錄已報名成員 ID
+        if (reg.type === 'internal' && reg.contact_name) {
+          const name = reg.contact_name.trim().replace(/\s+/g, '');
+          const member = MEMBERS.find(
+            (m) =>
+              m.name.replace(/\s+/g, '') === name ||
+              name.includes(m.name.replace(/\s+/g, '')) ||
+              m.name.replace(/\s+/g, '').includes(name)
+          );
+          if (member) registeredInternalMemberIds.add(member.id);
+        }
 
         // 飲食需求統計（以人數計）
         switch (reg.diet) {
@@ -193,6 +212,9 @@ export function useRegistrationStats() {
         stats.waitlist += reg.headcount;
       }
     });
+
+    stats.internalRegisteredCount = registeredInternalMemberIds.size;
+    stats.internalNotRegisteredCount = Math.max(0, MEMBERS.length - registeredInternalMemberIds.size);
   }
 
   return stats;
