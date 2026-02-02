@@ -364,11 +364,11 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen marble-bg">
+    <div className="min-h-screen marble-bg overflow-x-hidden">
       <Hero />
       
-      <section className="py-12 md:py-16">
-        <div className="container max-w-2xl mx-auto px-4">
+      <section className="py-8 sm:py-12 md:py-16 w-full min-w-0">
+        <div className="container max-w-2xl mx-auto w-full min-w-0 px-3 sm:px-4">
           {isWaitlistMode ? (
             <Form {...waitlistForm}>
               <form onSubmit={waitlistForm.handleSubmit(onWaitlistSubmit)}>

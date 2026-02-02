@@ -156,11 +156,11 @@ export function SeatingManager() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 min-w-0">
       {/* Settings */}
-      <div className="glass-card rounded-xl p-6">
-        <h3 className="font-serif text-xl font-semibold mb-4">桌數設定</h3>
-        <div className="flex flex-wrap gap-4 items-end">
+      <div className="glass-card rounded-xl p-4 sm:p-6">
+        <h3 className="font-serif text-lg sm:text-xl font-semibold mb-3 sm:mb-4">桌數設定</h3>
+        <div className="flex flex-wrap gap-3 sm:gap-4 items-end">
           <div>
             <Label>總桌數</Label>
             <Input
@@ -199,7 +199,7 @@ export function SeatingManager() {
       </div>
 
       {/* Table Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {Array.from({ length: parseInt(totalTables) }, (_, i) => i + 1).map((tableNum) => {
           const tableRegs = tableGroups[tableNum] || [];
           const totalSeats = tableRegs.reduce((sum, r) => sum + r.headcount, 0);
@@ -273,7 +273,7 @@ export function SeatingManager() {
       {/* Unassigned */}
       {tableGroups[0] && tableGroups[0].length > 0 && (
         <div
-          className="glass-card rounded-xl p-6"
+          className="glass-card rounded-xl p-4 sm:p-6 min-w-0"
           onDragOver={(e) => {
             if (draggingRegId) e.preventDefault();
           }}

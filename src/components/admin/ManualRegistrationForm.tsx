@@ -132,10 +132,10 @@ export function ManualRegistrationForm() {
   };
 
   return (
-    <div className="glass-card rounded-xl p-6 md:p-8">
-      <div className="flex items-center gap-3 mb-6">
-        <UserPlus className="w-5 h-5 text-primary" />
-        <h2 className="font-serif text-xl md:text-2xl font-semibold">手動提交名單</h2>
+    <div className="glass-card rounded-xl p-4 sm:p-6 md:p-8 min-w-0 max-w-full">
+      <div className="flex items-center gap-3 mb-4 sm:mb-6">
+        <UserPlus className="w-5 h-5 text-primary shrink-0" />
+        <h2 className="font-serif text-lg sm:text-xl md:text-2xl font-semibold truncate">手動提交名單</h2>
       </div>
 
       <Form {...form}>
@@ -221,76 +221,18 @@ export function ManualRegistrationForm() {
             />
           )}
 
-          {/* 聯絡人姓名 */}
-          <FormField
-            control={form.control}
-            name="contact_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>聯絡人姓名 *</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="請輸入聯絡人姓名"
-                    className="input-luxury"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* 電話 */}
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>電話 *</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="0912345678"
-                    className="input-luxury"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Email */}
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email（選填）</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type="email"
-                    placeholder="example@email.com"
-                    className="input-luxury"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* 公司 */}
-          {watchType === 'external' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 聯絡人姓名 */}
             <FormField
               control={form.control}
-              name="company"
+              name="contact_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>公司（選填）</FormLabel>
+                  <FormLabel>聯絡人姓名 *</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="請輸入公司名稱"
+                      placeholder="請輸入聯絡人姓名"
                       className="input-luxury"
                     />
                   </FormControl>
@@ -298,20 +240,18 @@ export function ManualRegistrationForm() {
                 </FormItem>
               )}
             />
-          )}
 
-          {/* 職稱 */}
-          {watchType === 'external' && (
+            {/* 電話 */}
             <FormField
               control={form.control}
-              name="title"
+              name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>職稱（選填）</FormLabel>
+                  <FormLabel>電話 *</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="請輸入職稱"
+                      placeholder="0912345678"
                       className="input-luxury"
                     />
                   </FormControl>
@@ -319,9 +259,69 @@ export function ManualRegistrationForm() {
                 </FormItem>
               )}
             />
+
+            {/* Email */}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email（選填）</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="email"
+                      placeholder="example@email.com"
+                      className="input-luxury"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {watchType === 'external' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="company"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>公司（選填）</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="請輸入公司名稱"
+                        className="input-luxury"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>職稱（選填）</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="請輸入職稱"
+                        className="input-luxury"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           )}
 
-          {/* 人數 */}
+          {/* 人數 + 飲食 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
             name="headcount"
@@ -343,31 +343,31 @@ export function ManualRegistrationForm() {
             )}
           />
 
-          {/* 飲食需求 */}
-          <FormField
-            control={form.control}
-            name="diet"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>飲食需求 *</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger className="input-luxury">
-                      <SelectValue placeholder="選擇飲食需求" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {Object.entries(DIET_TYPE_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="diet"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>飲食需求 *</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="input-luxury">
+                        <SelectValue placeholder="選擇飲食需求" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(DIET_TYPE_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           {/* 其他飲食需求 */}
           <FormField

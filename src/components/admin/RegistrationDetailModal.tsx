@@ -78,7 +78,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
 
   return (
     <Dialog open={!!registrationId} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden min-w-0">
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">報名詳情</DialogTitle>
         </DialogHeader>

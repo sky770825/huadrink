@@ -47,13 +47,13 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen marble-bg flex flex-col">
+    <div className="min-h-screen marble-bg flex flex-col overflow-x-hidden">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Diamond className="w-6 h-6 text-primary" strokeWidth={1.5} />
-            <h1 className="font-serif text-xl font-semibold">春酒報名管理</h1>
+        <div className="container mx-auto w-full min-w-0 px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Diamond className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" strokeWidth={1.5} />
+            <h1 className="font-serif text-base sm:text-xl font-semibold truncate">春酒報名管理</h1>
           </div>
           <Button variant="ghost" onClick={signOut} className="gap-2">
             <LogOut className="w-4 h-4" />
@@ -62,9 +62,9 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto flex-1 px-4 py-8">
+      <main className="container mx-auto flex-1 w-full min-w-0 px-3 sm:px-4 py-6 sm:py-8">
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 md:gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4 mb-6">
           <StatsCard title="總報名人數" value={stats.totalHeadcount} icon={Users} color="gold" />
           <StatsCard title="已付款" value={stats.paid} icon={CreditCard} color="green" />
           <StatsCard title="未付款" value={stats.unpaid} icon={AlertCircle} color="red" />
@@ -76,10 +76,10 @@ export default function AdminDashboard() {
 
         {/* Internal members: registered vs not registered (by name match) */}
         <section className="mb-8 space-y-3">
-          <h2 className="text-sm font-medium text-muted-foreground">
+          <h2 className="text-xs sm:text-sm font-medium text-muted-foreground">
             內部成員報名狀況（依聯絡人姓名與名單比對，僅供參考）
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4">
             <StatsCard
               title="已報名內部人數"
               value={stats.internalRegisteredCount}
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
 
         {/* 未報名內部成員名單彈窗 */}
         <Dialog open={showUnregisteredModal} onOpenChange={setShowUnregisteredModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col min-w-0">
             <DialogHeader>
               <DialogTitle>未報名內部成員名單（依姓名比對，僅供參考）</DialogTitle>
             </DialogHeader>
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
         {/* Diet stats */}
         <section className="mb-8 space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground">飲食需求統計（人數）</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
             <StatsCard title="一般葷食" value={stats.dietNormal} icon={Utensils} color="default" />
             <StatsCard title="素食" value={stats.dietVegetarian} icon={Leaf} color="green" />
             <StatsCard title="不吃牛" value={stats.dietNoBeef} icon={Utensils} color="gold" />
@@ -155,11 +155,11 @@ export default function AdminDashboard() {
         </section>
 
         {/* Tabs */}
-        <Tabs defaultValue="list" className="space-y-6">
-          <TabsList className="bg-muted/50">
-            <TabsTrigger value="list">名單管理</TabsTrigger>
-            <TabsTrigger value="add">提交名單</TabsTrigger>
-            <TabsTrigger value="seating">座位安排</TabsTrigger>
+        <Tabs defaultValue="list" className="space-y-4 sm:space-y-6">
+          <TabsList className="bg-muted/50 flex flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="list" className="text-xs sm:text-sm px-3 py-1.5">名單管理</TabsTrigger>
+            <TabsTrigger value="add" className="text-xs sm:text-sm px-3 py-1.5">提交名單</TabsTrigger>
+            <TabsTrigger value="seating" className="text-xs sm:text-sm px-3 py-1.5">座位安排</TabsTrigger>
           </TabsList>
 
           <TabsContent value="list">

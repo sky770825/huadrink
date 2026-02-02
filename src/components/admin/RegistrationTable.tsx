@@ -170,26 +170,27 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       {/* 收款說明 */}
-      <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm text-muted-foreground break-words">
         <span className="font-medium text-foreground">收款流程：</span>
         篩選「未付款」→ 點該筆「查看」→ 確認收到款項後點「確認已收款」一鍵核准，或將付款狀態改為「已付款」並儲存。
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground shrink-0" />
           <Input
             placeholder="搜尋姓名、公司、編號或手機..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 input-luxury"
+            className="pl-10 input-luxury w-full"
           />
         </div>
+        <div className="flex flex-wrap items-center gap-2">
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[150px] input-luxury">
+          <SelectTrigger className="w-full sm:w-[150px] input-luxury min-w-0">
             <SelectValue placeholder="類型" />
           </SelectTrigger>
           <SelectContent>
@@ -200,7 +201,7 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
           </SelectContent>
         </Select>
         <Select value={payStatusFilter} onValueChange={(v) => setPayStatusFilter(v as 'all' | 'paid' | 'unpaid')}>
-          <SelectTrigger className="w-[130px] input-luxury">
+          <SelectTrigger className="w-full sm:w-[130px] input-luxury min-w-0">
             <SelectValue placeholder="付款狀態" />
           </SelectTrigger>
           <SelectContent>
@@ -210,7 +211,7 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
           </SelectContent>
         </Select>
         <Select value={duplicateFilter} onValueChange={(v) => setDuplicateFilter(v as 'all' | 'duplicates')}>
-          <SelectTrigger className="w-[140px] input-luxury">
+          <SelectTrigger className="w-full sm:w-[140px] input-luxury min-w-0">
             <SelectValue placeholder="重複" />
           </SelectTrigger>
           <SelectContent>
@@ -248,11 +249,13 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
           )}
           全部改為未付款
         </Button>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="glass-card rounded-xl overflow-hidden">
-        <Table>
+      <div className="glass-card rounded-xl overflow-hidden min-w-0">
+        <div className="overflow-x-auto">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow className="bg-muted/30">
               <TableHead className="font-medium">報名編號</TableHead>
@@ -348,6 +351,7 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Pagination */}

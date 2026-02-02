@@ -11,6 +11,9 @@
 */
 
 @layer base {
+  html, body {
+    overflow-x: hidden;
+  }
   :root {
     /* Core Luxury Palette */
     --background: 40 20% 98%;

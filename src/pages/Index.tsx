@@ -54,10 +54,10 @@ export default function Index() {
   }, []);
 
   return (
-    <div className="min-h-screen marble-bg flex flex-col">
-      <main className="container mx-auto flex-1 px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16 space-y-12 lg:space-y-20">
+    <div className="min-h-screen marble-bg flex flex-col overflow-x-hidden">
+      <main className="container mx-auto flex-1 w-full min-w-0 px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16 space-y-12 lg:space-y-20">
         {/* Hero Section */}
-        <section className="max-w-3xl mx-auto text-center animate-fade-in-up px-2 sm:px-0">
+        <section className="max-w-3xl mx-auto text-center animate-fade-in-up px-2 sm:px-0 min-w-0">
           {/* Diamond Icon */}
           <div className="flex justify-center mb-8">
             <div className="p-4 rounded-full bg-primary/10 backdrop-blur-sm shadow-gold/40">
@@ -66,7 +66,7 @@ export default function Index() {
           </div>
 
           {/* Title */}
-          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground mb-4 leading-tight">
+          <h1 className="font-serif text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground mb-4 leading-tight break-words">
             {EVENT_INFO.title}
           </h1>
 
@@ -148,8 +148,8 @@ export default function Index() {
         </section>
 
         {/* Highlight Section */}
-        <section className="max-w-5xl mx-auto px-1 sm:px-0">
-          <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+        <section className="max-w-5xl mx-auto px-1 sm:px-0 min-w-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="rounded-2xl border border-white/10 bg-background/70 p-5 md:p-6 shadow-sm hover:-translate-y-1 hover:shadow-gold/40 transition-transform">
               <div className="mb-4 inline-flex items-center justify-center rounded-full bg-primary/10 p-3">
                 <Star className="w-5 h-5 text-primary" />
@@ -183,7 +183,7 @@ export default function Index() {
         </section>
 
         {/* Timeline / Agenda Section */}
-        <section className="max-w-4xl mx-auto px-1 sm:px-0">
+        <section className="max-w-4xl mx-auto px-1 sm:px-0 min-w-0">
           <div className="mb-6 text-left sm:text-center">
             <h2 className="font-serif text-2xl md:text-3xl text-foreground mb-2">當晚流程一覽</h2>
             <p className="text-sm text-muted-foreground">
@@ -237,7 +237,7 @@ export default function Index() {
         </section>
 
         {/* Bottom CTA Section */}
-        <section className="max-w-3xl mx-auto text-center pb-6 px-2 sm:px-0">
+        <section className="max-w-3xl mx-auto text-center pb-6 px-2 sm:px-0 min-w-0">
           <div className="rounded-3xl border border-primary/20 bg-background/80 px-5 py-7 md:px-10 md:py-10 shadow-gold/40">
             <p className="mb-3 text-sm uppercase tracking-[0.2em] text-primary">
               限定席次・報名即將截止
