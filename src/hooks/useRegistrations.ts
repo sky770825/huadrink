@@ -17,13 +17,16 @@ function parseAttendeeList(data: Json | null): Attendee[] {
   });
 }
 
+/** 列表不載入 pay_proof_base64（單筆可達數百 KB），點擊查看時再 fetch */
+const LIST_SELECT = 'id, ref_code, type, headcount, attendee_list, company, title, contact_name, phone, email, line_id, diet, diet_other, allergy_note, photo_consent, inviter, vip_note, invoice_needed, invoice_title, invoice_tax_id, pay_method, pay_status, pay_proof_url, pay_proof_last5, status, seat_zone, table_no, admin_note, created_at, updated_at';
+
 export function useRegistrations() {
   return useQuery({
     queryKey: ['registrations'],
     queryFn: async (): Promise<Registration[]> => {
       const { data, error } = await huadrink
         .from('registrations')
-        .select('*')
+        .select(LIST_SELECT)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -52,7 +55,7 @@ export function useRegistrations() {
         pay_method: row.pay_method as Registration['pay_method'],
         pay_status: row.pay_status as Registration['pay_status'],
         pay_proof_url: row.pay_proof_url,
-        pay_proof_base64: row.pay_proof_base64 ?? undefined,
+        pay_proof_base64: undefined, // 列表不載入，查看時由 useRegistration 取得
         pay_proof_last5: row.pay_proof_last5 ?? undefined,
         status: row.status as Registration['status'],
         seat_zone: row.seat_zone as Registration['seat_zone'],
@@ -62,6 +65,7 @@ export function useRegistrations() {
         updated_at: row.updated_at,
       }));
     },
+    staleTime: 10 * 1000, // 10 秒內不重複請求
   });
 }
 

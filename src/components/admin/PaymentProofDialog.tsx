@@ -7,12 +7,13 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye, Loader2 } from 'lucide-react';
 
 interface PaymentProofDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   imageUrl: string | null;
+  isLoading?: boolean;
 }
 
 /** 點擊可開啟付款憑證的按鈕（用於 RegistrationDetailModal） */
@@ -34,7 +35,7 @@ export function PaymentProofButton({ imageUrl }: { imageUrl: string }) {
   );
 }
 
-export function PaymentProofDialog({ open, onOpenChange, imageUrl }: PaymentProofDialogProps) {
+export function PaymentProofDialog({ open, onOpenChange, imageUrl, isLoading }: PaymentProofDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[90vw] max-h-[90vh] sm:max-w-2xl">
@@ -42,7 +43,11 @@ export function PaymentProofDialog({ open, onOpenChange, imageUrl }: PaymentProo
           <DialogTitle>付款憑證</DialogTitle>
           <DialogDescription>上傳的付款憑證圖片</DialogDescription>
         </DialogHeader>
-        {imageUrl ? (
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : imageUrl ? (
           <div className="flex justify-center">
             <img
               src={imageUrl}

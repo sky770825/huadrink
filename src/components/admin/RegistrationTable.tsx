@@ -39,7 +39,7 @@ function getDuplicateGroupIds(registrations: Registration[]): Set<string> {
 import { format } from 'date-fns';
 import { downloadCSV } from '@/lib/googleSheets';
 import { useToast } from '@/hooks/use-toast';
-import { useDeleteRegistration, useUpdateRegistration } from '@/hooks/useRegistrations';
+import { useDeleteRegistration, useUpdateRegistration, useRegistration } from '@/hooks/useRegistrations';
 
 interface RegistrationTableProps {
   registrations: Registration[];
@@ -59,6 +59,9 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
   const [isSettingAllUnpaid, setIsSettingAllUnpaid] = useState(false);
   const [updatingPayStatusId, setUpdatingPayStatusId] = useState<string | null>(null);
   const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
+  /** 需 fetch 才能取得 base64 的報名 id，列表不載入 base64 以加速 */
+  const [proofRegIdToFetch, setProofRegIdToFetch] = useState<string | null>(null);
+  const { data: proofRegData } = useRegistration(proofRegIdToFetch || '');
   /** 欲改為未付款的報名（需確認後一併清除付款憑證） */
   const [pendingUnpaidReg, setPendingUnpaidReg] = useState<Registration | null>(null);
 
@@ -399,12 +402,19 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
                           </Badge>
                         )}
                       </button>
-                      {getPaymentProofUrl(reg) && (
+                      {(reg.pay_proof_url || reg.pay_proof_last5) && (
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 shrink-0"
-                          onClick={() => setProofImageUrl(getPaymentProofUrl(reg)!)}
+                          onClick={() => {
+                            const url = getPaymentProofUrl(reg);
+                            if (url) {
+                              setProofImageUrl(url);
+                            } else {
+                              setProofRegIdToFetch(reg.id);
+                            }
+                          }}
                           title="查看付款憑證"
                         >
                           <Eye className="w-4 h-4 text-muted-foreground hover:text-foreground" />
@@ -472,9 +482,15 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
       )}
 
       <PaymentProofDialog
-        open={!!proofImageUrl}
-        onOpenChange={(open) => !open && setProofImageUrl(null)}
-        imageUrl={proofImageUrl}
+        open={!!proofImageUrl || !!proofRegIdToFetch}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProofImageUrl(null);
+            setProofRegIdToFetch(null);
+          }
+        }}
+        imageUrl={proofImageUrl ?? (proofRegData ? getPaymentProofUrl(proofRegData) : null)}
+        isLoading={!!proofRegIdToFetch && !proofRegData}
       />
 
       {/* 已付款 → 尚未付款：確認後一併清除資料庫中的付款憑證 */}
