@@ -203,10 +203,6 @@ export function SystemSettingsPanel() {
           )}
           儲存設定
         </Button>
-
-        <p className="text-xs text-muted-foreground pt-4 border-t border-border/50">
-          若儲存後前台未更新，請確認 Supabase 的 system_settings 表已有 key 為 registration_mode、deadline 的資料列（可手動新增或於 SQL Editor 執行 INSERT）。
-        </p>
       </div>
     </div>
   );
