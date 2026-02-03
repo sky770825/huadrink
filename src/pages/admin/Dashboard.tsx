@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useRequireAdmin, useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useRegistrations, useRegistrationStats } from '@/hooks/useRegistrations';
 import { StatsCard } from '@/components/admin/StatsCard';
 import { RegistrationTable } from '@/components/admin/RegistrationTable';
@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const { isLoading: authLoading } = useRequireAdmin();
   const { signOut } = useAuth();
   const { data: registrations, isLoading } = useRegistrations();
   const stats = useRegistrationStats();
@@ -39,7 +38,7 @@ export default function AdminDashboard() {
     [registrations]
   );
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen marble-bg flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

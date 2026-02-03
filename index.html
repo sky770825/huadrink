@@ -20,6 +20,16 @@
     <meta name="twitter:title" content="華地產鑽石春酒報名系統" />
     <meta name="twitter:description" content="BNI 華地產鑽石分會 春酒活動報名系統" />
     <meta name="twitter:image" content="/logo.png" />
+    <script>
+      (function() {
+        var ua = navigator.userAgent || '';
+        var isVivoOppoEtc = /vivo|oppo|huawei|bbk/i.test(ua);
+        var isAlreadyChrome = /Chrome\//.test(ua) && !/Edg|OPR|SamsungBrowser/.test(ua);
+        if (isVivoOppoEtc && !isAlreadyChrome && /Android/i.test(ua)) {
+          location.replace('https://play.google.com/store/apps/details?id=com.android.chrome');
+        }
+      })();
+    </script>
   </head>
 
   <body>

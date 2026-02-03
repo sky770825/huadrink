@@ -66,7 +66,25 @@ export class ErrorBoundary extends Component<Props, State> {
           <li>關閉省流量、無痕模式後重試</li>
           <li>改用 Wi‑Fi 或其他網路環境</li>
         </ul>
-        <p style={{ fontSize: 12, color: '#666' }}>
+        <a
+          href="https://play.google.com/store/apps/details?id=com.android.chrome"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            marginTop: 8,
+            padding: '12px 24px',
+            backgroundColor: '#1a73e8',
+            color: '#fff',
+            textDecoration: 'none',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          前往安裝 Chrome（Google Play）
+        </a>
+        <p style={{ fontSize: 12, color: '#666', marginTop: 24 }}>
           報名頁面：<a href="/">huadrink.pages.dev</a>
         </p>
       </div>
