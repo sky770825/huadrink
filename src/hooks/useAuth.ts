@@ -64,34 +64,25 @@ export function useAuth() {
       }
     );
 
-    // 單一來源：初始 session + 只查一次 admins
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        if (cancelled) return;
-        setUser(session?.user ?? null);
-
-        if (!session?.user) {
+    // 單一來源：初始 session + 只查一次 admins（admins 失敗時重試一次，避免重整時被誤踢）
+    const resolveAdmin = (uid: string) => {
+      const cached = getCachedAdminUserId();
+      if (cached === uid) {
+        try {
+          sessionStorage.removeItem(ADMIN_VERIFIED_CACHE_KEY);
+        } catch {}
+        if (!cancelled) {
+          setIsAdmin(true);
           setIsLoading(false);
-          return;
         }
-
-        const cached = getCachedAdminUserId();
-        if (cached === session.user.id) {
-          try {
-            sessionStorage.removeItem(ADMIN_VERIFIED_CACHE_KEY);
-          } catch {}
-          if (!cancelled) {
-            setIsAdmin(true);
-            setIsLoading(false);
-          }
-          return;
-        }
-
+        return;
+      }
+      const tryAdmins = (retry = false) => {
         supabase
-          .schema('huadrink').from('admins')
+          .schema('huadrink')
+          .from('admins')
           .select('id')
-          .eq('user_id', session.user.id)
+          .eq('user_id', uid)
           .maybeSingle()
           .then(({ data: adminData }) => {
             if (!cancelled) {
@@ -100,13 +91,42 @@ export function useAuth() {
             }
           })
           .catch(() => {
-            if (!cancelled) {
+            if (cancelled) return;
+            if (retry) {
               setIsAdmin(false);
               setIsLoading(false);
+            } else {
+              tryAdmins(true);
             }
           });
-      })
-      .catch(() => setLoadingFalse());
+      };
+      tryAdmins();
+    };
+
+    const tryGetSession = (retry = false) => {
+      supabase.auth
+        .getSession()
+        .then(({ data: { session } }) => {
+          if (cancelled) return;
+          setUser(session?.user ?? null);
+
+          if (!session?.user) {
+            setIsLoading(false);
+            return;
+          }
+
+          resolveAdmin(session.user.id);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (retry) {
+            setLoadingFalse();
+          } else {
+            setTimeout(() => tryGetSession(true), 300);
+          }
+        });
+    };
+    tryGetSession();
 
     const timeoutId = setTimeout(setLoadingFalse, 10000);
 
@@ -134,7 +154,7 @@ export function useRequireAdmin() {
 
   useEffect(() => {
     if (!isLoading && (!user || !isAdmin)) {
-      navigate('/admin/login');
+      navigate('/admin/login', { replace: true });
     }
   }, [user, isAdmin, isLoading, navigate]);
 
