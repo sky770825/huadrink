@@ -1,7 +1,7 @@
 export type RegistrationType = 'internal' | 'external' | 'vip';
 export type RegistrationStatus = 'open' | 'closed' | 'waitlist';
 export type PaymentMethod = 'transfer' | 'cash' | 'other';
-export type PaymentStatus = 'paid' | 'unpaid';
+export type PaymentStatus = 'paid' | 'unpaid' | 'pending';
 export type DietType = 'normal' | 'vegetarian' | 'no_beef' | 'no_pork' | 'other';
 export type SeatZone = 'vip' | 'general' | 'internal';
 
@@ -34,6 +34,8 @@ export interface Registration {
   pay_method: PaymentMethod;
   pay_status: PaymentStatus;
   pay_proof_url?: string;
+  pay_proof_base64?: string;
+  pay_proof_last5?: string;
   status: RegistrationStatus;
   seat_zone?: SeatZone;
   table_no?: number;
@@ -77,4 +79,9 @@ export interface SystemSettings {
   deadline: string;
   total_tables: number;
   seats_per_table: number;
+  /** 匯款帳號（後台可編輯） */
+  payment_bank_name?: string;
+  payment_account_number?: string;
+  payment_account_name?: string;
+  payment_amount?: string;
 }

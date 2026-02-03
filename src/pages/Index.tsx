@@ -103,11 +103,16 @@ export default function Index() {
           </div>
 
           {/* CTA Button + Countdown */}
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
             <Link to="/register">
               <Button size="lg" className="group gap-2 px-8 py-5 md:py-6 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-gold">
                 立即報名
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+            <Link to="/payment">
+              <Button size="lg" variant="outline" className="gap-2 px-8 py-5 md:py-6 text-base md:text-lg border-primary/40 hover:bg-primary/10">
+                內部付款
               </Button>
             </Link>
 

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { huadrink } from '@/lib/supabase-huadrink';
 import type { SystemSettings } from '@/types/registration';
 
 const SYSTEM_SETTINGS_CACHE_KEY = 'huadrink_system_settings_v1';
@@ -13,7 +13,7 @@ export function useSystemSettings() {
      * - 再向 Supabase 取得最新資料並更新快取
      */
     queryFn: async (): Promise<SystemSettings> => {
-      const { data, error } = await supabase
+      const { data, error } = await huadrink
         .from('system_settings')
         .select('key, value');
 
@@ -29,6 +29,10 @@ export function useSystemSettings() {
         deadline: settings.deadline,
         total_tables: parseInt(settings.total_tables || '10'),
         seats_per_table: parseInt(settings.seats_per_table || '10'),
+        payment_bank_name: settings.payment_bank_name,
+        payment_account_number: settings.payment_account_number,
+        payment_account_name: settings.payment_account_name,
+        payment_amount: settings.payment_amount,
       };
 
       // 將最新設定寫入 localStorage，供下次快速讀取
@@ -64,7 +68,7 @@ export function useUpdateSystemSetting() {
 
   return useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
-      const { error } = await supabase
+      const { error } = await huadrink
         .from('system_settings')
         .update({ value })
         .eq('key', key);

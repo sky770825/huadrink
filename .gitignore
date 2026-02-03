@@ -28,3 +28,6 @@ bun.lockb
 
 # Local environment (use Cloudflare env vars in production)
 .env
+
+# Database backups (may contain sensitive data)
+exports/

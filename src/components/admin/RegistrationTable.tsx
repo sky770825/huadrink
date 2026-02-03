@@ -4,9 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { REGISTRATION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/constants';
 import { getMemberByContactName } from '@/lib/members';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Trash2, Copy, Wallet, Loader2 } from 'lucide-react';
+import { getPaymentProofUrl } from '@/lib/utils';
+import { PaymentProofDialog } from '@/components/admin/PaymentProofDialog';
 import type { Registration } from '@/types/registration';
 
 /** 同一人重複報名：以聯絡人姓名 + 手機正規化後為 key，回傳該 key 對應的報名 id 列表（僅保留有重複的） */
@@ -37,7 +49,7 @@ interface RegistrationTableProps {
 export function RegistrationTable({ registrations, onViewDetail }: RegistrationTableProps) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [payStatusFilter, setPayStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+  const [payStatusFilter, setPayStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'pending'>('all');
   const [duplicateFilter, setDuplicateFilter] = useState<'all' | 'duplicates'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -46,6 +58,9 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
   const updateRegistration = useUpdateRegistration();
   const [isSettingAllUnpaid, setIsSettingAllUnpaid] = useState(false);
   const [updatingPayStatusId, setUpdatingPayStatusId] = useState<string | null>(null);
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
+  /** 欲改為未付款的報名（需確認後一併清除付款憑證） */
+  const [pendingUnpaidReg, setPendingUnpaidReg] = useState<Registration | null>(null);
 
   const duplicateIds = getDuplicateGroupIds(registrations);
 
@@ -68,6 +83,7 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
   });
 
   const unpaidList = registrations.filter((r) => r.pay_status === 'unpaid');
+  const pendingList = registrations.filter((r) => r.pay_status === 'pending');
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginatedData = filtered.slice(
@@ -119,19 +135,32 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
     }
   };
 
-  const handleTogglePayStatus = async (reg: Registration) => {
-    const nextStatus = reg.pay_status === 'paid' ? 'unpaid' : 'paid';
-    setUpdatingPayStatusId(reg.id);
+  const handleTogglePayStatus = (reg: Registration) => {
+    // 從「已付款」改為「尚未付款」時需確認，並一併清除資料庫中的付款憑證
+    if (reg.pay_status === 'paid') {
+      setPendingUnpaidReg(reg);
+      return;
+    }
+    void doUpdatePayStatus(reg.id, 'paid', undefined);
+  };
+
+  const doUpdatePayStatus = async (
+    id: string,
+    nextStatus: 'paid' | 'unpaid',
+    clearProof?: { pay_proof_url: null; pay_proof_base64: null; pay_proof_last5: null }
+  ) => {
+    setUpdatingPayStatusId(id);
     try {
       await updateRegistration.mutateAsync({
-        id: reg.id,
-        updates: { pay_status: nextStatus },
+        id,
+        updates: clearProof ? { pay_status: nextStatus, ...clearProof } : { pay_status: nextStatus },
       });
       toast({
         title: '已更新',
         description: `付款狀態已改為「${PAYMENT_STATUS_LABELS[nextStatus]}」`,
         duration: 3000,
       });
+      setPendingUnpaidReg(null);
     } catch (error) {
       toast({
         title: '更新失敗',
@@ -142,6 +171,16 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
     } finally {
       setUpdatingPayStatusId(null);
     }
+  };
+
+  const handleConfirmPaidToUnpaid = () => {
+    if (!pendingUnpaidReg) return;
+    const { id } = pendingUnpaidReg;
+    void doUpdatePayStatus(id, 'unpaid', {
+      pay_proof_url: null,
+      pay_proof_base64: null,
+      pay_proof_last5: null,
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -177,6 +216,25 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
         篩選「未付款」→ 點該筆「查看」→ 確認收到款項後點「確認已收款」一鍵核准，或將付款狀態改為「已付款」並儲存。
       </div>
 
+      {/* 快速審核：已提交付款待審核名單 */}
+      {pendingList.length > 0 && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between gap-3 flex-wrap">
+          <span className="text-sm font-medium">
+            待審核：<span className="text-primary">{pendingList.length}</span> 筆已提交付款憑證，等待確認
+          </span>
+          <Button
+            variant={payStatusFilter === 'pending' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setPayStatusFilter('pending');
+              setCurrentPage(1);
+            }}
+          >
+            快速查看審核名單
+          </Button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         <div className="relative flex-1 min-w-0">
@@ -200,14 +258,15 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
             <SelectItem value="internal">內部夥伴</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={payStatusFilter} onValueChange={(v) => setPayStatusFilter(v as 'all' | 'paid' | 'unpaid')}>
+        <Select value={payStatusFilter} onValueChange={(v) => setPayStatusFilter(v as 'all' | 'paid' | 'unpaid' | 'pending')}>
           <SelectTrigger className="w-full sm:w-[130px] input-luxury min-w-0">
             <SelectValue placeholder="付款狀態" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部</SelectItem>
             <SelectItem value="paid">已付款</SelectItem>
-            <SelectItem value="unpaid">未付款 {unpaidList.length > 0 ? `(${unpaidList.length})` : ''}</SelectItem>
+            <SelectItem value="unpaid">尚未付款 {unpaidList.length > 0 ? `(${unpaidList.length})` : ''}</SelectItem>
+            <SelectItem value="pending">審核付款 {pendingList.length > 0 ? `(${pendingList.length})` : ''}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={duplicateFilter} onValueChange={(v) => setDuplicateFilter(v as 'all' | 'duplicates')}>
@@ -306,24 +365,37 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
                   </TableCell>
                   <TableCell className="text-center">{reg.headcount}</TableCell>
                   <TableCell>
-                    <button
-                      type="button"
-                      onClick={() => void handleTogglePayStatus(reg)}
-                      disabled={updatingPayStatusId === reg.id}
-                      className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md"
-                      title="點擊切換付款狀態並儲存"
-                    >
-                      {updatingPayStatusId === reg.id ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground inline" />
-                      ) : (
-                        <Badge
-                          variant={reg.pay_status === 'paid' ? 'default' : 'secondary'}
-                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePayStatus(reg)}
+                        disabled={updatingPayStatusId === reg.id}
+                        className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md"
+                        title="點擊切換付款狀態並儲存"
+                      >
+                        {updatingPayStatusId === reg.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground inline" />
+                        ) : (
+                          <Badge
+                            variant={reg.pay_status === 'paid' ? 'default' : reg.pay_status === 'pending' ? 'secondary' : 'outline'}
+                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                          >
+                            {PAYMENT_STATUS_LABELS[reg.pay_status] || reg.pay_status}
+                          </Badge>
+                        )}
+                      </button>
+                      {getPaymentProofUrl(reg) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() => setProofImageUrl(getPaymentProofUrl(reg)!)}
+                          title="查看付款憑證"
                         >
-                          {PAYMENT_STATUS_LABELS[reg.pay_status] || reg.pay_status}
-                        </Badge>
+                          <Eye className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                        </Button>
                       )}
-                    </button>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {format(new Date(reg.created_at), 'MM/dd HH:mm')}
@@ -383,6 +455,30 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
           </div>
         </div>
       )}
+
+      <PaymentProofDialog
+        open={!!proofImageUrl}
+        onOpenChange={(open) => !open && setProofImageUrl(null)}
+        imageUrl={proofImageUrl}
+      />
+
+      {/* 已付款 → 尚未付款：確認後一併清除資料庫中的付款憑證 */}
+      <AlertDialog open={!!pendingUnpaidReg} onOpenChange={(open) => !open && setPendingUnpaidReg(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確定改為「尚未付款」？</AlertDialogTitle>
+            <AlertDialogDescription>
+              此報名目前為「已付款」。若改為「尚未付款」，系統將同時刪除該筆的付款憑證（圖片與末五碼），且無法復原。確定要變更嗎？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmPaidToUnpaid} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              確定變更
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

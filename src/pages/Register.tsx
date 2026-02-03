@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +12,7 @@ import { Step2Form } from '@/components/register/Step2Form';
 import { SuccessPage } from '@/components/register/SuccessPage';
 import { useSystemSettings, isDeadlinePassed } from '@/hooks/useSystemSettings';
 import { supabase } from '@/integrations/supabase/client';
+import { huadrink } from '@/lib/supabase-huadrink';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -95,22 +96,6 @@ export default function Register() {
   const { data: settings, isLoading: settingsLoading } = useSystemSettings();
   const { toast } = useToast();
 
-  // 抑制 Supabase 內部 fetch 拋出的 AbortError 在主控台顯示「Uncaught (in promise)」（錯誤仍由下方 try/catch 處理並顯示 toast）
-  useEffect(() => {
-    const handler = (event: PromiseRejectionEvent) => {
-      const reason = event.reason;
-      const isAbort =
-        reason != null &&
-        typeof reason === 'object' &&
-        ((reason as { name?: string }).name === 'AbortError' ||
-          (typeof (reason as { message?: string }).message === 'string' &&
-            /abort|signal is aborted/i.test((reason as { message: string }).message)));
-      if (isAbort) event.preventDefault();
-    };
-    window.addEventListener('unhandledrejection', handler);
-    return () => window.removeEventListener('unhandledrejection', handler);
-  }, []);
-
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(fullSchema),
     defaultValues: {
@@ -182,7 +167,7 @@ export default function Register() {
 
   const generateRefCode = () => {
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `DINE-0303-${random}`;
+    return `HUADRINK-${random}`;
   };
 
 
@@ -236,7 +221,7 @@ export default function Register() {
       };
 
       const insertPromise = Promise.resolve(
-        supabase.from('registrations').insert(insertData).select().single()
+        huadrink.from('registrations').insert(insertData).select().single()
       );
       insertPromise.catch(() => {}); // 避免 AbortError 被當成 Uncaught (in promise)
       const { data: result, error } = await insertPromise;
@@ -325,7 +310,7 @@ export default function Register() {
       };
 
       const waitlistPromise = Promise.resolve(
-        supabase.from('registrations').insert(insertData).select().single()
+        huadrink.from('registrations').insert(insertData).select().single()
       );
       waitlistPromise.catch(() => {}); // 避免 AbortError 被當成 Uncaught (in promise)
       const { data: result, error } = await waitlistPromise;

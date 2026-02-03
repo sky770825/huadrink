@@ -47,11 +47,19 @@ export function SystemSettingsPanel() {
 
   const [registrationMode, setRegistrationMode] = useState<SystemSettings['registration_mode']>('open');
   const [deadline, setDeadline] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [amount, setAmount] = useState('');
 
   useEffect(() => {
     if (settings) {
       setRegistrationMode(settings.registration_mode);
       setDeadline(toDatetimeLocal(settings.deadline));
+      setBankName(settings.payment_bank_name ?? '');
+      setAccountNumber(settings.payment_account_number ?? '');
+      setAccountName(settings.payment_account_name ?? '');
+      setAmount(settings.payment_amount ?? '');
     }
   }, [settings]);
 
@@ -68,6 +76,10 @@ export function SystemSettingsPanel() {
     try {
       await updateSetting.mutateAsync({ key: 'registration_mode', value: registrationMode });
       await updateSetting.mutateAsync({ key: 'deadline', value: deadlineValue });
+      await updateSetting.mutateAsync({ key: 'payment_bank_name', value: bankName || '（請填入）' });
+      await updateSetting.mutateAsync({ key: 'payment_account_number', value: accountNumber || '（請填入）' });
+      await updateSetting.mutateAsync({ key: 'payment_account_name', value: accountName || '（請填入）' });
+      await updateSetting.mutateAsync({ key: 'payment_amount', value: amount || '（請填入）' });
       toast({
         title: '已儲存',
         description: '系統設定已更新，前台將依新報名時間與狀態顯示。',
@@ -117,6 +129,48 @@ export function SystemSettingsPanel() {
               <SelectItem value="waitlist">{REGISTRATION_MODE_LABELS.waitlist}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="pt-4 border-t border-border/50">
+          <h3 className="font-medium mb-3">匯款帳號（付款頁顯示，可一鍵複製）</h3>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm text-muted-foreground">銀行名稱</Label>
+              <Input
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="例：中國信託"
+                className="input-luxury mt-1 w-full"
+              />
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground">帳號</Label>
+              <Input
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder="例：12345678901234"
+                className="input-luxury mt-1 w-full"
+              />
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground">戶名</Label>
+              <Input
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                placeholder="例：華地產鑽石分會"
+                className="input-luxury mt-1 w-full"
+              />
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground">每人金額</Label>
+              <Input
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="例：1,000 元 或 另洽主辦"
+                className="input-luxury mt-1 w-full"
+              />
+            </div>
+          </div>
         </div>
 
         <div>

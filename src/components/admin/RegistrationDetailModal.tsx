@@ -11,7 +11,9 @@ import { useRegistration, useUpdateRegistration } from '@/hooks/useRegistrations
 import { useToast } from '@/hooks/use-toast';
 import { REGISTRATION_TYPE_LABELS, DIET_TYPE_LABELS, PAYMENT_STATUS_LABELS, SEAT_ZONE_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/constants';
 import { getMemberByContactName } from '@/lib/members';
-import { Loader2, Save, ExternalLink, CreditCard } from 'lucide-react';
+import { Loader2, Save, ExternalLink, CreditCard, Eye } from 'lucide-react';
+import { getPaymentProofUrl } from '@/lib/utils';
+import { PaymentProofButton } from '@/components/admin/PaymentProofDialog';
 import { format } from 'date-fns';
 import type { PaymentStatus, SeatZone } from '@/types/registration';
 
@@ -196,17 +198,18 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
                 <Label className="text-muted-foreground">付款方式</Label>
                 <p className="font-medium">{PAYMENT_METHOD_LABELS[registration.pay_method]}</p>
               </div>
-              {registration.pay_proof_url && (
+              {registration.pay_proof_last5 && (
                 <div>
+                  <Label className="text-muted-foreground">匯款末五碼</Label>
+                  <p className="font-mono font-medium">{registration.pay_proof_last5}</p>
+                </div>
+              )}
+              {getPaymentProofUrl(registration) && (
+                <div className="sm:col-span-2">
                   <Label className="text-muted-foreground">付款憑證</Label>
-                  <a
-                    href={registration.pay_proof_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-primary hover:underline"
-                  >
-                    查看憑證 <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <div className="flex items-center gap-2 mt-1">
+                    <PaymentProofButton imageUrl={getPaymentProofUrl(registration)!} />
+                  </div>
                 </div>
               )}
             </div>
@@ -228,10 +231,11 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="paid">已付款</SelectItem>
-                      <SelectItem value="unpaid">未付款</SelectItem>
+                      <SelectItem value="unpaid">尚未付款</SelectItem>
+                      <SelectItem value="pending">審核付款</SelectItem>
                     </SelectContent>
                   </Select>
-                    {payStatus === 'unpaid' && (
+                    {(payStatus === 'unpaid' || payStatus === 'pending') && (
                       <Button
                         size="sm"
                         variant="default"

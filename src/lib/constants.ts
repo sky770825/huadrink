@@ -30,6 +30,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   paid: '已付款',
   unpaid: '尚未付款',
+  pending: '審核付款',
 };
 
 /** 收款／匯款說明（供報名頁與催款使用，請依實際活動修改） */

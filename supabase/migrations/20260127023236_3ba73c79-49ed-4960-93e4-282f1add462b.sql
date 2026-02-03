@@ -22,7 +22,7 @@ DECLARE
   code_exists BOOLEAN;
 BEGIN
   LOOP
-    new_code := 'DINE-0303-' || LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0');
+    new_code := 'HUADRINK-' || LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0');
     SELECT EXISTS(SELECT 1 FROM public.registrations WHERE ref_code = new_code) INTO code_exists;
     EXIT WHEN NOT code_exists;
   END LOOP;

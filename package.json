@@ -4,6 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "create-bucket": "node scripts/create-payment-bucket.js",
+    "export-db": "node scripts/export-database.js",
+    "import-db": "node scripts/import-database.js",
+    "import-csv": "node scripts/import-from-csv.js",
+    "setup-admin": "node scripts/setup-admin.js",
+    "setup-new-db": "node scripts/setup-new-db.js",
+    "import-csv-only": "node scripts/setup-new-db.js --import-only",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",

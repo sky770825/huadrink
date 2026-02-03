@@ -51,6 +51,7 @@ function formatRegistrationForSheet(reg: Registration, index: number): string[] 
     reg.invoice_tax_id || '', // 統一編號
     PAYMENT_METHOD_LABELS[reg.pay_method] || reg.pay_method, // 付款方式
     PAYMENT_STATUS_LABELS[reg.pay_status] || reg.pay_status, // 付款狀態
+    reg.pay_proof_last5 || '', // 匯款末五碼
     reg.seat_zone ? SEAT_ZONE_LABELS[reg.seat_zone] : '', // 座位區域
     reg.table_no?.toString() || '', // 桌號
     reg.admin_note || '', // 管理員備註
@@ -87,6 +88,7 @@ function generateHeaders(): string[] {
     '統一編號',
     '付款方式',
     '付款狀態',
+    '匯款末五碼',
     '座位區域',
     '桌號',
     '管理員備註',

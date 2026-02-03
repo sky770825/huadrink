@@ -3,16 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, REMEMBER_KEY } from '@/integrations/supabase/client';
+import { setAdminVerifiedCache } from '@/hooks/useAuth';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Diamond, Loader2, Lock } from 'lucide-react';
+
+const SAVED_EMAIL_KEY = 'huadrink_saved_email';
 
 const loginSchema = z.object({
   email: z.string().email('請輸入有效的 Email'),
   password: z.string().min(6, '密碼至少 6 個字元'),
+  remember: z.boolean().default(true),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -25,30 +30,38 @@ export default function AdminLogin() {
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      email: typeof window !== 'undefined' ? (localStorage.getItem(SAVED_EMAIL_KEY) || '') : '',
       password: '',
+      remember: typeof window !== 'undefined' ? localStorage.getItem(REMEMBER_KEY) !== 'false' : true,
     },
   });
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      localStorage.setItem(REMEMBER_KEY, data.remember ? 'true' : 'false');
+      if (data.remember) {
+        localStorage.setItem(SAVED_EMAIL_KEY, data.email);
+      } else {
+        localStorage.removeItem(SAVED_EMAIL_KEY);
+      }
+
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
       if (error) throw error;
 
-      // Check if user is admin
-      // 必須添加 .eq('user_id', ...) 來查詢當前用戶的記錄
-      const { data: { user } } = await supabase.auth.getUser();
+      // signInWithPassword 已回傳 user，不需再呼叫 getUser()，少一次請求以減少延遲
+      const user = authData?.user;
       if (!user) {
         throw new Error('無法獲取用戶資訊');
       }
 
       const { data: adminData, error: adminError } = await supabase
+        .schema('huadrink')
         .from('admins')
         .select('id')
         .eq('user_id', user.id)
@@ -58,6 +71,8 @@ export default function AdminLogin() {
         await supabase.auth.signOut();
         throw new Error('您沒有管理員權限');
       }
+
+      setAdminVerifiedCache(user.id);
 
       toast({
         title: '登入成功',
@@ -132,6 +147,24 @@ export default function AdminLogin() {
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="remember"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="text-sm font-normal cursor-pointer">
+                      記住登入狀態（關閉分頁後仍保持登入）
+                    </FormLabel>
                   </FormItem>
                 )}
               />

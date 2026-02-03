@@ -68,6 +68,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4 mb-6">
           <StatsCard title="總報名人數" value={stats.totalHeadcount} icon={Users} color="gold" />
           <StatsCard title="已付款" value={stats.paid} icon={CreditCard} color="green" />
+          <StatsCard title="審核付款" value={stats.pending} icon={Clock} color="purple" />
           <StatsCard title="未付款" value={stats.unpaid} icon={AlertCircle} color="red" />
           <StatsCard title="VIP" value={stats.vip} icon={Crown} color="purple" />
           <StatsCard title="外部來賓" value={stats.external} icon={UserPlus} color="blue" />

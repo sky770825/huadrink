@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { huadrink } from '@/lib/supabase-huadrink';
 import type { Registration, Attendee } from '@/types/registration';
 import type { Json } from '@/integrations/supabase/types';
 import { MEMBERS } from '@/lib/members';
@@ -21,7 +21,7 @@ export function useRegistrations() {
   return useQuery({
     queryKey: ['registrations'],
     queryFn: async (): Promise<Registration[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await huadrink
         .from('registrations')
         .select('*')
         .order('created_at', { ascending: false });
@@ -52,6 +52,8 @@ export function useRegistrations() {
         pay_method: row.pay_method as Registration['pay_method'],
         pay_status: row.pay_status as Registration['pay_status'],
         pay_proof_url: row.pay_proof_url,
+        pay_proof_base64: row.pay_proof_base64 ?? undefined,
+        pay_proof_last5: row.pay_proof_last5 ?? undefined,
         status: row.status as Registration['status'],
         seat_zone: row.seat_zone as Registration['seat_zone'],
         table_no: row.table_no,
@@ -67,7 +69,7 @@ export function useRegistration(id: string) {
   return useQuery({
     queryKey: ['registration', id],
     queryFn: async (): Promise<Registration | null> => {
-      const { data, error } = await supabase
+      const { data, error } = await huadrink
         .from('registrations')
         .select('*')
         .eq('id', id)
@@ -100,6 +102,8 @@ export function useRegistration(id: string) {
         pay_method: data.pay_method as Registration['pay_method'],
         pay_status: data.pay_status as Registration['pay_status'],
         pay_proof_url: data.pay_proof_url,
+        pay_proof_base64: data.pay_proof_base64 ?? undefined,
+        pay_proof_last5: data.pay_proof_last5 ?? undefined,
         status: data.status as Registration['status'],
         seat_zone: data.seat_zone as Registration['seat_zone'],
         table_no: data.table_no,
@@ -115,10 +119,14 @@ export function useRegistration(id: string) {
 interface UpdateRegistrationParams {
   id: string;
   updates: {
-    pay_status?: 'paid' | 'unpaid';
+    pay_status?: 'paid' | 'unpaid' | 'pending';
     seat_zone?: 'vip' | 'general' | 'internal' | null;
     table_no?: number | null;
     admin_note?: string | null;
+    /** 清除付款憑證時設為 null */
+    pay_proof_url?: string | null;
+    pay_proof_base64?: string | null;
+    pay_proof_last5?: string | null;
   };
 }
 
@@ -127,7 +135,7 @@ export function useUpdateRegistration() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: UpdateRegistrationParams) => {
-      const { error } = await supabase
+      const { error } = await huadrink
         .from('registrations')
         .update(updates)
         .eq('id', id);
@@ -148,6 +156,8 @@ export function useRegistrationStats() {
     totalHeadcount: 0,
     paid: 0,
     unpaid: 0,
+    /** 已提交付款憑證待審核的人數（報名筆數，非 headcount） */
+    pending: 0,
     vip: 0,
     external: 0,
     internal: 0,
@@ -172,6 +182,7 @@ export function useRegistrationStats() {
         stats.totalHeadcount += reg.headcount;
 
         if (reg.pay_status === 'paid') stats.paid += reg.headcount;
+        else if (reg.pay_status === 'pending') stats.pending += 1;
         else stats.unpaid += reg.headcount;
 
         if (reg.type === 'vip') stats.vip += reg.headcount;
@@ -293,7 +304,7 @@ export function useCreateRegistration() {
         admin_note: params.admin_note || null,
       };
 
-      const { data, error } = await supabase
+      const { data, error } = await huadrink
         .from('registrations')
         .insert(insertData)
         .select()
@@ -314,7 +325,7 @@ export function useDeleteRegistration() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { error } = await huadrink
         .from('registrations')
         .delete()
         .eq('id', id);

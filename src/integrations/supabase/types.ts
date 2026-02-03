@@ -52,6 +52,8 @@ export type Database = {
           line_id: string | null
           pay_method: Database["public"]["Enums"]["payment_method"]
           pay_proof_url: string | null
+          pay_proof_base64: string | null
+          pay_proof_last5: string | null
           pay_status: Database["public"]["Enums"]["payment_status"]
           phone: string
           photo_consent: boolean
@@ -83,6 +85,8 @@ export type Database = {
           line_id?: string | null
           pay_method?: Database["public"]["Enums"]["payment_method"]
           pay_proof_url?: string | null
+          pay_proof_base64?: string | null
+          pay_proof_last5?: string | null
           pay_status?: Database["public"]["Enums"]["payment_status"]
           phone: string
           photo_consent?: boolean
@@ -114,6 +118,8 @@ export type Database = {
           line_id?: string | null
           pay_method?: Database["public"]["Enums"]["payment_method"]
           pay_proof_url?: string | null
+          pay_proof_base64?: string | null
+          pay_proof_last5?: string | null
           pay_status?: Database["public"]["Enums"]["payment_status"]
           phone?: string
           photo_consent?: boolean
@@ -159,7 +165,7 @@ export type Database = {
     Enums: {
       diet_type: "normal" | "vegetarian" | "no_beef" | "no_pork" | "other"
       payment_method: "transfer" | "cash" | "other"
-      payment_status: "paid" | "unpaid"
+      payment_status: "paid" | "unpaid" | "pending"
       registration_status: "open" | "closed" | "waitlist"
       registration_type: "internal" | "external" | "vip"
       seat_zone: "vip" | "general" | "internal"
