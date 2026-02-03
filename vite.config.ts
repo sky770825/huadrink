@@ -4,6 +4,10 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
+  build: {
+    // 支援較舊手機瀏覽器（Safari 12、Chrome 64+、Android 8+）
+    target: ['es2020', 'chrome64', 'safari12'],
+  },
   server: {
     host: "::",
     port: 8080,
