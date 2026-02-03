@@ -82,17 +82,32 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
     return matchesSearch && matchesType && matchesPayStatus && matchesDuplicate;
   });
 
+  /** 預設照序號排序：內部夥伴依成員編號，其餘依報名編號 */
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    const aInternal = a.type === 'internal';
+    const bInternal = b.type === 'internal';
+    if (aInternal && bInternal) {
+      const memberA = getMemberByContactName(a.contact_name);
+      const memberB = getMemberByContactName(b.contact_name);
+      const idA = memberA?.id ?? 9999;
+      const idB = memberB?.id ?? 9999;
+      return idA - idB;
+    }
+    if (aInternal !== bInternal) return aInternal ? -1 : 1;
+    return (a.ref_code || '').localeCompare(b.ref_code || '');
+  });
+
   const unpaidList = registrations.filter((r) => r.pay_status === 'unpaid');
   const pendingList = registrations.filter((r) => r.pay_status === 'pending');
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginatedData = filtered.slice(
+  const totalPages = Math.ceil(sortedFiltered.length / itemsPerPage);
+  const paginatedData = sortedFiltered.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
   const exportToCSV = () => {
-    downloadCSV(filtered, `報名名單_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
+    downloadCSV(sortedFiltered, `報名名單_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
     toast({
       title: '匯出成功',
       description: 'CSV 檔案已下載',
@@ -430,7 +445,7 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            共 {filtered.length} 筆資料
+            共 {sortedFiltered.length} 筆資料
           </p>
           <div className="flex items-center gap-2">
             <Button
