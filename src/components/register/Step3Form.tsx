@@ -4,6 +4,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { FormSection } from './FormCard';
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_INSTRUCTIONS } from '@/lib/constants';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { formatDeadlineDisplay } from '@/lib/utils';
 import { Upload, FileImage, X } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +16,10 @@ interface Step3FormProps {
 }
 
 export function Step3Form({ form }: Step3FormProps) {
+  const { data: settings } = useSystemSettings();
+  const deadlineDisplay = settings?.deadline
+    ? `${formatDeadlineDisplay(settings.deadline)}前`
+    : PAYMENT_INSTRUCTIONS.deadline;
   const watchPayStatus = form.watch('pay_status');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -169,7 +175,7 @@ export function Step3Form({ form }: Step3FormProps) {
           <div>
             <h4 className="font-medium text-foreground mb-1">付款提醒</h4>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              請於 <span className="text-primary font-medium">{PAYMENT_INSTRUCTIONS.deadline}</span> 前完成付款，
+              請於 <span className="text-primary font-medium">{deadlineDisplay}</span> 完成付款，
               逾期將視為候補報名。付款後請上傳憑證以加速確認流程。
             </p>
           </div>

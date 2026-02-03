@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { REGISTRATION_TYPE_LABELS } from '@/lib/constants';
+import { formatDeadlineDisplay } from '@/lib/utils';
 import type { Registration, RegistrationFormData, Attendee, RegistrationType } from '@/types/registration';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -404,7 +405,7 @@ export default function Register() {
                       <div>
                         <h4 className="font-medium text-foreground mb-1">候補登記</h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                          報名人數已於 1/31 鎖定。您的登記將進入候補名單，若有名額釋出，我們會主動與您聯繫。
+                          報名人數已於 {settings?.deadline ? formatDeadlineDisplay(settings.deadline) : '報名截止日'} 鎖定。您的登記將進入候補名單，若有名額釋出，我們會主動與您聯繫。
                         </p>
                       </div>
                     </div>

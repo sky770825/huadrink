@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { huadrink } from '@/lib/supabase-huadrink';
 import type { SystemSettings } from '@/types/registration';
 
-const SYSTEM_SETTINGS_CACHE_KEY = 'huadrink_system_settings_v1';
+const SYSTEM_SETTINGS_CACHE_KEY = 'huadrink_system_settings_v2';
 
 export function useSystemSettings() {
   return useQuery({
@@ -57,8 +57,8 @@ export function useSystemSettings() {
         return undefined;
       }
     },
-    // 在一定時間內視為「新鮮」資料，不重複打 API
-    staleTime: 5 * 60 * 1000, // 5 分鐘
+    // 在一定時間內視為「新鮮」資料，不重複打 API（2 分鐘，確保後台更新後前台較快反映）
+    staleTime: 2 * 60 * 1000, // 2 分鐘
     cacheTime: 30 * 60 * 1000, // 30 分鐘後才從記憶體快取回收
   });
 }
@@ -77,6 +77,14 @@ export function useUpdateSystemSetting() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });
+      // 清除 localStorage 快取，強制下次載入從 API 取得最新設定
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.removeItem(SYSTEM_SETTINGS_CACHE_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
     },
   });
 }

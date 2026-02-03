@@ -4,6 +4,7 @@ import { Diamond, ArrowRight, CalendarDays, Clock, Users, Star } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { EVENT_INFO } from '@/lib/constants';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { formatDeadlineDisplay } from '@/lib/utils';
 
 type CountdownState = {
   days: number;
@@ -13,21 +14,10 @@ type CountdownState = {
   isExpired: boolean;
 };
 
-/** 將 ISO 截止時間轉成前台顯示用：M/D（週X，含） */
-function formatDeadlineDisplay(deadline: string): string {
-  if (!deadline) return EVENT_INFO.deadlineDisplay;
-  const d = new Date(deadline);
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-  const w = weekdays[d.getDay()];
-  return `${m}/${day}（週${w}，含）`;
-}
-
 export default function Index() {
   const { data: settings } = useSystemSettings();
   const deadlineSource = settings?.deadline || EVENT_INFO.deadline;
-  const deadlineDisplay = settings?.deadline ? formatDeadlineDisplay(settings.deadline) : EVENT_INFO.deadlineDisplay;
+  const deadlineDisplay = (settings?.deadline ? formatDeadlineDisplay(settings.deadline) : null) ?? EVENT_INFO.deadlineDisplay;
 
   const [countdown, setCountdown] = useState<CountdownState>({
     days: 0,

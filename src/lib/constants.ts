@@ -3,8 +3,8 @@ export const EVENT_INFO = {
   date: '2026/03/03（週二）',
   checkInTime: '17:30–18:00',
   startTime: '18:30',
-  deadline: '2026-01-31T23:59:59+08:00',
-  deadlineDisplay: '1/31（週六，含）',
+  deadline: '2026-02-07T23:59:59+08:00', // 後台可覆寫，此為 API 無回應時的 fallback
+  deadlineDisplay: '2/7（週六，含）',
 };
 
 export const REGISTRATION_TYPE_LABELS: Record<string, string> = {
@@ -35,7 +35,7 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
 
 /** 收款／匯款說明（供報名頁與催款使用，請依實際活動修改） */
 export const PAYMENT_INSTRUCTIONS = {
-  deadline: '1/31（週六，含）前',
+  deadline: '2/7（週六，含）前', // 後台可覆寫，此為 API 無回應時的 fallback
   bankName: '（請填入銀行名稱，例如：中國信託）',
   bankCode: '',
   accountNumber: '（請填入帳號）',

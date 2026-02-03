@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
@@ -26,7 +26,17 @@ export function setAdminVerifiedCache(userId: string) {
   } catch {}
 }
 
-export function useAuth() {
+interface AuthState {
+  user: User | null;
+  isAdmin: boolean;
+  isLoading: boolean;
+  signOut: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthState | null>(null);
+
+/** 全站唯一 auth 狀態，避免多個 useAuth() 各自 getSession 導致重整時誤導向登入 */
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,12 +49,11 @@ export function useAuth() {
       if (!cancelled) setIsLoading(false);
     };
 
-    // 僅在「非初始」的 auth 變更時查 admins，避免與 getSession() 重複查兩次
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (cancelled) return;
         setUser(session?.user ?? null);
-        if (event === 'INITIAL_SESSION') return; // 初始狀態交給 getSession() 處理，不重複查 admins
+        if (event === 'INITIAL_SESSION') return;
 
         if (session?.user) {
           try {
@@ -64,7 +73,6 @@ export function useAuth() {
       }
     );
 
-    // 單一來源：初始 session + 只查一次 admins（admins 失敗時重試一次，避免重整時被誤踢）
     const resolveAdmin = (uid: string) => {
       const cached = getCachedAdminUserId();
       if (cached === uid) {
@@ -145,7 +153,17 @@ export function useAuth() {
     navigate('/admin/login');
   };
 
-  return { user, isAdmin, isLoading, signOut };
+  return (
+    <AuthContext.Provider value={{ user, isAdmin, isLoading, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 }
 
 export function useRequireAdmin() {
