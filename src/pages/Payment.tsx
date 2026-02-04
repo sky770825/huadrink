@@ -30,8 +30,8 @@ function sortByMemberId(
 
 export default function Payment() {
   const queryClient = useQueryClient();
-  const { data: paymentEligible = [], isLoading: regLoading } = usePaymentEligibleRegistrations();
-  const { data: settings, isLoading: settingsLoading } = useSystemSettings();
+  const { data: paymentEligible = [], isLoading: regLoading, isError: regError } = usePaymentEligibleRegistrations();
+  const { data: settings, isLoading: settingsLoading, isError: settingsError } = useSystemSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -138,14 +138,8 @@ export default function Payment() {
   };
 
   const isLoading = regLoading || settingsLoading;
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen marble-bg flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  /** 只有報名名單查詢失敗才擋住表單；settings 有 localStorage 快取與 fallback，不應視為致命 */
+  const hasFatalError = regError;
 
   return (
     <div className="min-h-screen marble-bg overflow-x-hidden">
@@ -163,7 +157,19 @@ export default function Payment() {
           <FormCard className="animate-fade-in-up">
             <h2 className="font-serif text-xl md:text-2xl font-semibold mb-6">內部夥伴付款</h2>
 
-            {eligible.length === 0 ? (
+            {hasFatalError ? (
+              <div className="py-8 text-center space-y-3">
+                <p className="text-muted-foreground">無法載入報名名單，請檢查網路後重試。</p>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  重新載入
+                </Button>
+              </div>
+            ) : isLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">載入中...</p>
+              </div>
+            ) : eligible.length === 0 ? (
               <p className="text-muted-foreground py-8">
                 目前沒有待付款的內部報名，或您已完成付款審核提交。若有疑問請聯繫主辦單位。
               </p>

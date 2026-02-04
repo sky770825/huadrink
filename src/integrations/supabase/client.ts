@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import { createFetchWithTimeout } from '@/lib/supabaseFetch';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -46,7 +47,10 @@ function createSupabaseClient() {
         },
         persistSession: true,
         autoRefreshToken: true,
-      }
+      },
+      global: {
+        fetch: createFetchWithTimeout(15_000), // 15 秒逾時，避免網路不穩時一直轉圈
+      },
     }
   );
 }

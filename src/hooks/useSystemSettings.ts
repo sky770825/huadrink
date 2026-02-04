@@ -60,6 +60,8 @@ export function useSystemSettings() {
     // 在一定時間內視為「新鮮」資料，不重複打 API（2 分鐘，確保後台更新後前台較快反映）
     staleTime: 2 * 60 * 1000, // 2 分鐘
     cacheTime: 30 * 60 * 1000, // 30 分鐘後才從記憶體快取回收
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 }
 

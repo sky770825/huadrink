@@ -90,6 +90,8 @@ export function usePaymentEligibleRegistrations() {
       return (data || []) as Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[];
     },
     staleTime: 30 * 1000,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 }
 
