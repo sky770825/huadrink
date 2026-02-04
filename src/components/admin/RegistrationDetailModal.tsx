@@ -208,7 +208,10 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
                 <div className="sm:col-span-2">
                   <Label className="text-muted-foreground">付款憑證</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <PaymentProofButton imageUrl={getPaymentProofUrl(registration)!} />
+                    <PaymentProofButton
+                      imageUrl={getPaymentProofUrl(registration)!}
+                      context={{ contact_name: registration.contact_name, ref_code: registration.ref_code, pay_proof_last5: registration.pay_proof_last5 ?? undefined }}
+                    />
                   </div>
                 </div>
               )}

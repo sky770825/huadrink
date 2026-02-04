@@ -32,6 +32,8 @@ export default function AdminDashboard() {
   const stats = useRegistrationStats();
   const [selectedRegistrationId, setSelectedRegistrationId] = useState<string | null>(null);
   const [showUnregisteredModal, setShowUnregisteredModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('list');
+  const [listPayStatusFilter, setListPayStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'pending'>('all');
 
   const unregisteredInternalMembers = useMemo(
     () => getUnregisteredInternalMembers(registrations || []),
@@ -59,9 +61,27 @@ export default function AdminDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4 mb-6">
           <StatsCard title="總報名人數" value={isLoading ? '—' : stats.totalHeadcount} icon={Users} color="gold" />
-          <StatsCard title="已付款" value={isLoading ? '—' : stats.paid} icon={CreditCard} color="green" />
-          <StatsCard title="審核付款" value={isLoading ? '—' : stats.pending} icon={Clock} color="purple" />
-          <StatsCard title="未付款" value={isLoading ? '—' : stats.unpaid} icon={AlertCircle} color="red" />
+          <StatsCard
+            title="已付款"
+            value={isLoading ? '—' : stats.paid}
+            icon={CreditCard}
+            color="green"
+            onClick={() => { setListPayStatusFilter('paid'); setActiveTab('list'); }}
+          />
+          <StatsCard
+            title="審核付款"
+            value={isLoading ? '—' : stats.pending}
+            icon={Clock}
+            color="purple"
+            onClick={() => { setListPayStatusFilter('pending'); setActiveTab('list'); }}
+          />
+          <StatsCard
+            title="未付款"
+            value={isLoading ? '—' : stats.unpaid}
+            icon={AlertCircle}
+            color="red"
+            onClick={() => { setListPayStatusFilter('unpaid'); setActiveTab('list'); }}
+          />
           <StatsCard title="VIP" value={isLoading ? '—' : stats.vip} icon={Crown} color="purple" />
           <StatsCard title="外部來賓" value={isLoading ? '—' : stats.external} icon={UserPlus} color="blue" />
           <StatsCard title="內部夥伴" value={isLoading ? '—' : stats.internal} icon={Users} color="default" />
@@ -149,7 +169,7 @@ export default function AdminDashboard() {
         </section>
 
         {/* Tabs */}
-        <Tabs defaultValue="list" className="space-y-4 sm:space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
           <TabsList className="bg-muted/50 flex flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="list" className="text-xs sm:text-sm px-3 py-1.5">名單管理</TabsTrigger>
             <TabsTrigger value="add" className="text-xs sm:text-sm px-3 py-1.5">提交名單</TabsTrigger>
@@ -167,6 +187,8 @@ export default function AdminDashboard() {
               <RegistrationTable
                 registrations={registrations || []}
                 onViewDetail={setSelectedRegistrationId}
+                externalPayStatusFilter={listPayStatusFilter}
+                onPayStatusFilterChange={(v) => setListPayStatusFilter(v)}
               />
             )}
           </TabsContent>

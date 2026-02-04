@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import { REGISTRATION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/constants
 import { getMemberByContactName } from '@/lib/members';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Trash2, Copy, Wallet, Loader2 } from 'lucide-react';
 import { getPaymentProofUrl } from '@/lib/utils';
-import { PaymentProofDialog } from '@/components/admin/PaymentProofDialog';
+import { PaymentProofDialog, type PaymentProofContext } from '@/components/admin/PaymentProofDialog';
 import type { Registration } from '@/types/registration';
 
 /** 同一人重複報名：以聯絡人姓名 + 手機正規化後為 key，回傳該 key 對應的報名 id 列表（僅保留有重複的） */
@@ -44,12 +44,22 @@ import { useDeleteRegistration, useUpdateRegistration, useRegistration } from '@
 interface RegistrationTableProps {
   registrations: Registration[];
   onViewDetail: (id: string) => void;
+  /** 由外部（如 StatsCard 點擊）控制付款狀態篩選 */
+  externalPayStatusFilter?: 'all' | 'paid' | 'unpaid' | 'pending';
+  onPayStatusFilterChange?: (v: 'all' | 'paid' | 'unpaid' | 'pending') => void;
 }
 
-export function RegistrationTable({ registrations, onViewDetail }: RegistrationTableProps) {
+export function RegistrationTable({
+  registrations,
+  onViewDetail,
+  externalPayStatusFilter,
+  onPayStatusFilterChange,
+}: RegistrationTableProps) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [payStatusFilter, setPayStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'pending'>('all');
+  const [internalPayStatusFilter, setInternalPayStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'pending'>('all');
+  const payStatusFilter = externalPayStatusFilter ?? internalPayStatusFilter;
+  const setPayStatusFilter = onPayStatusFilterChange ?? setInternalPayStatusFilter;
   const [duplicateFilter, setDuplicateFilter] = useState<'all' | 'duplicates'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -61,11 +71,17 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
   const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
   /** 需 fetch 才能取得 base64 的報名 id，列表不載入 base64 以加速 */
   const [proofRegIdToFetch, setProofRegIdToFetch] = useState<string | null>(null);
+  /** 憑證對應的報名者資訊，供審核時核對 */
+  const [proofViewingContext, setProofViewingContext] = useState<PaymentProofContext | null>(null);
   const { data: proofRegData } = useRegistration(proofRegIdToFetch || '');
   /** 欲改為未付款的報名（需確認後一併清除付款憑證） */
   const [pendingUnpaidReg, setPendingUnpaidReg] = useState<Registration | null>(null);
 
   const duplicateIds = getDuplicateGroupIds(registrations);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [payStatusFilter, typeFilter]);
 
   const filtered = registrations.filter((reg) => {
     const matchesSearch =
@@ -408,10 +424,18 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
                           size="icon"
                           className="h-8 w-8 shrink-0"
                           onClick={() => {
+                            const ctx: PaymentProofContext = {
+                              contact_name: reg.contact_name,
+                              ref_code: reg.ref_code,
+                              pay_proof_last5: reg.pay_proof_last5 ?? undefined,
+                            };
+                            setProofViewingContext(ctx);
                             const url = getPaymentProofUrl(reg);
                             if (url) {
+                              setProofRegIdToFetch(null); // 避免混用 fetch 結果
                               setProofImageUrl(url);
                             } else {
+                              setProofImageUrl(null);   // 避免混用前一次的 URL
                               setProofRegIdToFetch(reg.id);
                             }
                           }}
@@ -487,10 +511,12 @@ export function RegistrationTable({ registrations, onViewDetail }: RegistrationT
           if (!open) {
             setProofImageUrl(null);
             setProofRegIdToFetch(null);
+            setProofViewingContext(null);
           }
         }}
         imageUrl={proofImageUrl ?? (proofRegData ? getPaymentProofUrl(proofRegData) : null)}
         isLoading={!!proofRegIdToFetch && !proofRegData}
+        context={proofViewingContext ?? (proofRegData ? { contact_name: proofRegData.contact_name, ref_code: proofRegData.ref_code, pay_proof_last5: proofRegData.pay_proof_last5 ?? undefined } : null)}
       />
 
       {/* 已付款 → 尚未付款：確認後一併清除資料庫中的付款憑證 */}

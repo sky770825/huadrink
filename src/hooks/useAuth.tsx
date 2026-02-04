@@ -151,9 +151,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const timeoutId = setTimeout(setLoadingFalse, 10000);
 
+    /** 分頁回到前景時主動 refresh token，避免背景節流導致過期 */
+    const handleVisibilityChange = () => {
+      if (cancelled || document.visibilityState !== 'visible') return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (cancelled || !session?.user) return;
+        supabase.auth.refreshSession().catch(() => {
+          /* 忽略，onAuthStateChange 會處理 SIGNED_OUT */
+        });
+      });
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       subscription.unsubscribe();
     };
   }, []);

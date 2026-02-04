@@ -186,7 +186,7 @@ export default function AdminLogin() {
                       />
                     </FormControl>
                     <FormLabel className="text-sm font-normal cursor-pointer">
-                      記住登入狀態（關閉分頁後仍保持登入）
+                      記住登入狀態（關閉分頁後仍保持登入，建議勾選以避免意外登出）
                     </FormLabel>
                   </FormItem>
                 )}
