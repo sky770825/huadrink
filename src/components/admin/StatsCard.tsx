@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 interface StatsCardProps {
   title: string;
-  value: number;
+  value: number | string;
   icon: LucideIcon;
   color?: 'default' | 'gold' | 'green' | 'red' | 'blue' | 'purple';
 }

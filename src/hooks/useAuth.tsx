@@ -53,9 +53,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         if (cancelled) return;
         setUser(session?.user ?? null);
-        if (event === 'INITIAL_SESSION') return;
+        if (event === 'INITIAL_SESSION') {
+          if (session?.user) resolveAdmin(session.user.id);
+          return;
+        }
 
         if (session?.user) {
+          const cached = getCachedAdminUserId();
+          if (cached === session.user.id) {
+            try { sessionStorage.removeItem(ADMIN_VERIFIED_CACHE_KEY); } catch {}
+            if (!cancelled) {
+              setIsAdmin(true);
+              setLoadingFalse();
+            }
+            return;
+          }
           try {
             const { data: adminData } = await supabase
               .schema('huadrink').from('admins')

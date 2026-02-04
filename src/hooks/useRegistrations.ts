@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { huadrink } from '@/lib/supabase-huadrink';
 import type { Registration, Attendee } from '@/types/registration';
 import type { Json } from '@/integrations/supabase/types';
@@ -20,52 +20,76 @@ function parseAttendeeList(data: Json | null): Attendee[] {
 /** 列表不載入 pay_proof_base64（單筆可達數百 KB），點擊查看時再 fetch */
 const LIST_SELECT = 'id, ref_code, type, headcount, attendee_list, company, title, contact_name, phone, email, line_id, diet, diet_other, allergy_note, photo_consent, inviter, vip_note, invoice_needed, invoice_title, invoice_tax_id, pay_method, pay_status, pay_proof_url, pay_proof_last5, status, seat_zone, table_no, admin_note, created_at, updated_at';
 
+async function fetchRegistrations(): Promise<Registration[]> {
+  const { data, error } = await huadrink
+    .from('registrations')
+    .select(LIST_SELECT)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.id,
+    ref_code: row.ref_code,
+    type: row.type as Registration['type'],
+    headcount: row.headcount,
+    attendee_list: parseAttendeeList(row.attendee_list),
+    company: row.company,
+    title: row.title,
+    contact_name: row.contact_name,
+    phone: row.phone,
+    email: row.email,
+    line_id: row.line_id,
+    diet: row.diet as Registration['diet'],
+    diet_other: row.diet_other,
+    allergy_note: row.allergy_note,
+    photo_consent: row.photo_consent,
+    inviter: row.inviter,
+    vip_note: row.vip_note,
+    invoice_needed: row.invoice_needed,
+    invoice_title: row.invoice_title,
+    invoice_tax_id: row.invoice_tax_id,
+    pay_method: row.pay_method as Registration['pay_method'],
+    pay_status: row.pay_status as Registration['pay_status'],
+    pay_proof_url: row.pay_proof_url,
+    pay_proof_base64: undefined,
+    pay_proof_last5: row.pay_proof_last5 ?? undefined,
+    status: row.status as Registration['status'],
+    seat_zone: row.seat_zone as Registration['seat_zone'],
+    table_no: row.table_no,
+    admin_note: row.admin_note,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }));
+}
+
+/** 登入成功後可呼叫，預先載入報名列表以加速進入後台 */
+export function prefetchRegistrations(queryClient: QueryClient) {
+  return queryClient.prefetchQuery({ queryKey: ['registrations'], queryFn: fetchRegistrations });
+}
+
 export function useRegistrations() {
   return useQuery({
     queryKey: ['registrations'],
-    queryFn: async (): Promise<Registration[]> => {
+    queryFn: fetchRegistrations,
+    staleTime: 10 * 1000, // 10 秒內不重複請求
+  });
+}
+
+/** 內部付款頁專用：只查「內部＋未付款」的 id / ref_code / contact_name，載入快 */
+export function usePaymentEligibleRegistrations() {
+  return useQuery({
+    queryKey: ['registrations', 'payment-eligible'],
+    queryFn: async (): Promise<Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[]> => {
       const { data, error } = await huadrink
         .from('registrations')
-        .select(LIST_SELECT)
-        .order('created_at', { ascending: false });
+        .select('id, ref_code, contact_name, type, pay_status')
+        .eq('type', 'internal')
+        .eq('pay_status', 'unpaid')
+        .order('contact_name', { ascending: true });
 
       if (error) throw error;
-
-      return (data || []).map((row) => ({
-        id: row.id,
-        ref_code: row.ref_code,
-        type: row.type as Registration['type'],
-        headcount: row.headcount,
-        attendee_list: parseAttendeeList(row.attendee_list),
-        company: row.company,
-        title: row.title,
-        contact_name: row.contact_name,
-        phone: row.phone,
-        email: row.email,
-        line_id: row.line_id,
-        diet: row.diet as Registration['diet'],
-        diet_other: row.diet_other,
-        allergy_note: row.allergy_note,
-        photo_consent: row.photo_consent,
-        inviter: row.inviter,
-        vip_note: row.vip_note,
-        invoice_needed: row.invoice_needed,
-        invoice_title: row.invoice_title,
-        invoice_tax_id: row.invoice_tax_id,
-        pay_method: row.pay_method as Registration['pay_method'],
-        pay_status: row.pay_status as Registration['pay_status'],
-        pay_proof_url: row.pay_proof_url,
-        pay_proof_base64: undefined, // 列表不載入，查看時由 useRegistration 取得
-        pay_proof_last5: row.pay_proof_last5 ?? undefined,
-        status: row.status as Registration['status'],
-        seat_zone: row.seat_zone as Registration['seat_zone'],
-        table_no: row.table_no,
-        admin_note: row.admin_note,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-      }));
+      return (data || []) as Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[];
     },
-    staleTime: 10 * 1000, // 10 秒內不重複請求
+    staleTime: 30 * 1000,
   });
 }
 

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRegistrations } from '@/hooks/useRegistrations';
+import { usePaymentEligibleRegistrations } from '@/hooks/useRegistrations';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,12 +15,11 @@ import { getMemberByContactName } from '@/lib/members';
 import { Copy, Loader2, Upload, ArrowLeft, Camera } from 'lucide-react';
 import type { Registration } from '@/types/registration';
 
-/** 可選擇付款的內部報名（僅尚未付款；已送出憑證審核中的不顯示），依內部編號排序 */
-function getPaymentEligibleRegistrations(registrations: Registration[]): Registration[] {
-  const list = registrations.filter(
-    (r) => r.type === 'internal' && r.pay_status === 'unpaid'
-  );
-  return list.sort((a, b) => {
+/** 依內部編號排序（API 已篩選內部＋未付款） */
+function sortByMemberId(
+  list: Pick<Registration, 'id' | 'ref_code' | 'contact_name'>[]
+): Pick<Registration, 'id' | 'ref_code' | 'contact_name'>[] {
+  return [...list].sort((a, b) => {
     const memberA = getMemberByContactName(a.contact_name);
     const memberB = getMemberByContactName(b.contact_name);
     const idA = memberA?.id ?? 9999;
@@ -31,7 +30,7 @@ function getPaymentEligibleRegistrations(registrations: Registration[]): Registr
 
 export default function Payment() {
   const queryClient = useQueryClient();
-  const { data: registrations = [], isLoading: regLoading } = useRegistrations();
+  const { data: paymentEligible = [], isLoading: regLoading } = usePaymentEligibleRegistrations();
   const { data: settings, isLoading: settingsLoading } = useSystemSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,7 +41,7 @@ export default function Payment() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const eligible = getPaymentEligibleRegistrations(registrations);
+  const eligible = sortByMemberId(paymentEligible);
 
   const accountNumber = settings?.payment_account_number ?? '（請聯繫主辦取得帳號）';
   const bankName = settings?.payment_bank_name ?? '';
@@ -116,6 +115,7 @@ export default function Payment() {
       if (rpcError) throw rpcError;
 
       await queryClient.invalidateQueries({ queryKey: ['registrations'] });
+      await queryClient.invalidateQueries({ queryKey: ['registrations', 'payment-eligible'] });
       toast({ title: '上傳成功', description: '付款憑證已送出，主辦單位審核後會與您聯繫。', duration: 4000 });
       setSelectedId('');
       setLast5('');

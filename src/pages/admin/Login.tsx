@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { prefetchRegistrations } from '@/hooks/useRegistrations';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,6 +27,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const form = useForm<LoginFormData>({
@@ -79,11 +82,22 @@ export default function AdminLogin() {
         description: '歡迎回來',
       });
 
+      void prefetchRegistrations(queryClient);
       navigate('/admin');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[Login]', error);
+      const isInvalidCreds = /invalid|credentials|wrong|錯誤/i.test(msg);
+      const isNoAdmin = /管理員權限|admin/i.test(msg);
+      let description = msg;
+      if (isInvalidCreds) {
+        description = 'Email 或密碼不正確，請再確認後重試。';
+      } else if (isNoAdmin) {
+        description = '此帳號未列入管理員名單，請聯繫主辦單位或執行 setup-admin 加入。';
+      }
       toast({
         title: '登入失敗',
-        description: error.message || '請檢查您的帳號密碼',
+        description,
         variant: 'destructive',
       });
     } finally {

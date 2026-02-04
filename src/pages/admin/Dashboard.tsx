@@ -38,14 +38,7 @@ export default function AdminDashboard() {
     [registrations]
   );
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen marble-bg flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
+  // 漸進式載入：立即顯示頁面結構，資料載入中時顯示 skeleton
   return (
     <div className="min-h-screen marble-bg flex flex-col overflow-x-hidden">
       {/* Header */}
@@ -65,14 +58,14 @@ export default function AdminDashboard() {
       <main className="container mx-auto flex-1 w-full min-w-0 px-3 sm:px-4 py-6 sm:py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4 mb-6">
-          <StatsCard title="總報名人數" value={stats.totalHeadcount} icon={Users} color="gold" />
-          <StatsCard title="已付款" value={stats.paid} icon={CreditCard} color="green" />
-          <StatsCard title="審核付款" value={stats.pending} icon={Clock} color="purple" />
-          <StatsCard title="未付款" value={stats.unpaid} icon={AlertCircle} color="red" />
-          <StatsCard title="VIP" value={stats.vip} icon={Crown} color="purple" />
-          <StatsCard title="外部來賓" value={stats.external} icon={UserPlus} color="blue" />
-          <StatsCard title="內部夥伴" value={stats.internal} icon={Users} color="default" />
-          <StatsCard title="候補" value={stats.waitlist} icon={Clock} color="default" />
+          <StatsCard title="總報名人數" value={isLoading ? '—' : stats.totalHeadcount} icon={Users} color="gold" />
+          <StatsCard title="已付款" value={isLoading ? '—' : stats.paid} icon={CreditCard} color="green" />
+          <StatsCard title="審核付款" value={isLoading ? '—' : stats.pending} icon={Clock} color="purple" />
+          <StatsCard title="未付款" value={isLoading ? '—' : stats.unpaid} icon={AlertCircle} color="red" />
+          <StatsCard title="VIP" value={isLoading ? '—' : stats.vip} icon={Crown} color="purple" />
+          <StatsCard title="外部來賓" value={isLoading ? '—' : stats.external} icon={UserPlus} color="blue" />
+          <StatsCard title="內部夥伴" value={isLoading ? '—' : stats.internal} icon={Users} color="default" />
+          <StatsCard title="候補" value={isLoading ? '—' : stats.waitlist} icon={Clock} color="default" />
         </div>
 
         {/* Internal members: registered vs not registered (by name match) */}
@@ -83,7 +76,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4">
             <StatsCard
               title="已報名內部人數"
-              value={stats.internalRegisteredCount}
+              value={isLoading ? '—' : stats.internalRegisteredCount}
               icon={Users}
               color="default"
             />
@@ -100,7 +93,7 @@ export default function AdminDashboard() {
                     <span className="ml-1 text-[10px] text-primary">（點擊查看名單）</span>
                   </p>
                   <p className="font-serif text-2xl font-semibold text-foreground leading-tight">
-                    {stats.internalNotRegisteredCount}
+                    {isLoading ? '—' : stats.internalNotRegisteredCount}
                   </p>
                 </div>
                 <div className="p-3 rounded-xl bg-red-500/10 text-red-600">
@@ -147,11 +140,11 @@ export default function AdminDashboard() {
         <section className="mb-8 space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground">飲食需求統計（人數）</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
-            <StatsCard title="一般葷食" value={stats.dietNormal} icon={Utensils} color="default" />
-            <StatsCard title="素食" value={stats.dietVegetarian} icon={Leaf} color="green" />
-            <StatsCard title="不吃牛" value={stats.dietNoBeef} icon={Utensils} color="gold" />
-            <StatsCard title="不吃豬" value={stats.dietNoPork} icon={Utensils} color="purple" />
-            <StatsCard title="其他需求" value={stats.dietOther} icon={AlertCircle} color="red" />
+            <StatsCard title="一般葷食" value={isLoading ? '—' : stats.dietNormal} icon={Utensils} color="default" />
+            <StatsCard title="素食" value={isLoading ? '—' : stats.dietVegetarian} icon={Leaf} color="green" />
+            <StatsCard title="不吃牛" value={isLoading ? '—' : stats.dietNoBeef} icon={Utensils} color="gold" />
+            <StatsCard title="不吃豬" value={isLoading ? '—' : stats.dietNoPork} icon={Utensils} color="purple" />
+            <StatsCard title="其他需求" value={isLoading ? '—' : stats.dietOther} icon={AlertCircle} color="red" />
           </div>
         </section>
 
@@ -165,10 +158,17 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="list">
-            <RegistrationTable
-              registrations={registrations || []}
-              onViewDetail={setSelectedRegistrationId}
-            />
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">載入報名名單中...</p>
+              </div>
+            ) : (
+              <RegistrationTable
+                registrations={registrations || []}
+                onViewDetail={setSelectedRegistrationId}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="add">
