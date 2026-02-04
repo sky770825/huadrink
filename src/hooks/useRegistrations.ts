@@ -74,7 +74,7 @@ export function useRegistrations() {
   });
 }
 
-const PAYMENT_QUERY_TIMEOUT_MS = 15_000;
+const PAYMENT_QUERY_TIMEOUT_MS = 60_000; // 60 秒，追求最大穩定性
 
 /** 內部付款頁專用：只查「內部＋未付款」的 id / ref_code / contact_name，載入快 */
 export function usePaymentEligibleRegistrations() {
@@ -111,9 +111,9 @@ export function usePaymentEligibleRegistrations() {
         throw e;
       }
     },
-    staleTime: 30 * 1000,
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
+    staleTime: 5 * 60 * 1000, // 5 分鐘內不重取，最大化穩定
+    retry: 5, // 最多重試 5 次
+    retryDelay: (attemptIndex) => Math.min(2000 * 2 ** attemptIndex, 15000), // 退避 2s、4s、8s…，最長 15s
   });
 }
 

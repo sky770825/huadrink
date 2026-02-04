@@ -47,7 +47,7 @@ export default function Payment() {
       setLoadingTooLong(false);
       return;
     }
-    const t = setTimeout(() => setLoadingTooLong(true), 8000);
+    const t = setTimeout(() => setLoadingTooLong(true), 25000); // 25 秒後顯示重試提示
     return () => clearTimeout(t);
   }, [regLoading]);
 
