@@ -157,3 +157,9 @@ INSERT INTO huadrink.system_settings (key, value) VALUES
   ('payment_account_name', '（請填入戶名）'),
   ('payment_amount', '（請填入金額或另洽主辦）')
 ON CONFLICT (key) DO NOTHING;
+
+-- 索引：避免全表掃描，報名筆數一多會嚴重延遲
+CREATE INDEX IF NOT EXISTS idx_registrations_type_pay_status
+  ON huadrink.registrations (type, pay_status);
+CREATE INDEX IF NOT EXISTS idx_registrations_created_at_desc
+  ON huadrink.registrations (created_at DESC);

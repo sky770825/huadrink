@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         if (event === 'INITIAL_SESSION') {
           if (session?.user) resolveAdmin(session.user.id);
+          else setLoadingFalse();
           return;
         }
 

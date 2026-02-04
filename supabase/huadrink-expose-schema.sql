@@ -12,3 +12,7 @@ GRANT SELECT ON huadrink.system_settings TO anon, authenticated;
 GRANT UPDATE ON huadrink.system_settings TO authenticated;
 GRANT SELECT ON huadrink.admins TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA huadrink TO service_role;
+-- 明確授權（確保 export-db 等腳本可執行）
+GRANT ALL ON huadrink.registrations TO service_role;
+GRANT ALL ON huadrink.system_settings TO service_role;
+GRANT ALL ON huadrink.admins TO service_role;

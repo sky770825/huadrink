@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePaymentEligibleRegistrations } from '@/hooks/useRegistrations';
@@ -30,7 +30,7 @@ function sortByMemberId(
 
 export default function Payment() {
   const queryClient = useQueryClient();
-  const { data: paymentEligible = [], isLoading: regLoading, isError: regError } = usePaymentEligibleRegistrations();
+  const { data: paymentEligible = [], isLoading: regLoading, isError: regError, refetch: refetchReg } = usePaymentEligibleRegistrations();
   const { data: settings, isLoading: settingsLoading, isError: settingsError } = useSystemSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +40,16 @@ export default function Payment() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingTooLong, setLoadingTooLong] = useState(false);
+
+  useEffect(() => {
+    if (!regLoading) {
+      setLoadingTooLong(false);
+      return;
+    }
+    const t = setTimeout(() => setLoadingTooLong(true), 8000);
+    return () => clearTimeout(t);
+  }, [regLoading]);
 
   const eligible = sortByMemberId(paymentEligible);
 
@@ -137,8 +147,7 @@ export default function Payment() {
     }
   };
 
-  const isLoading = regLoading || settingsLoading;
-  /** 只有報名名單查詢失敗才擋住表單；settings 有 localStorage 快取與 fallback，不應視為致命 */
+  /** 漸進式載入：不擋整頁，立即顯示匯款資訊，僅報名名單區塊顯示載入／錯誤 */
   const hasFatalError = regError;
 
   return (
@@ -157,17 +166,39 @@ export default function Payment() {
           <FormCard className="animate-fade-in-up">
             <h2 className="font-serif text-xl md:text-2xl font-semibold mb-6">內部夥伴付款</h2>
 
+            {/* 匯款帳號區塊：立即顯示（有 fallback），不等設定載入 */}
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mb-6">
+              <Label className="text-muted-foreground">匯款帳號</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="font-mono text-lg font-semibold">{accountNumber}</span>
+                <Button type="button" variant="outline" size="icon" onClick={copyAccount} title="複製帳號">
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              {bankName && <p className="text-sm text-muted-foreground mt-1">銀行：{bankName}</p>}
+              {accountName && <p className="text-sm text-muted-foreground">戶名：{accountName}</p>}
+              {amount && <p className="text-sm text-muted-foreground mt-1">金額：{amount}</p>}
+            </div>
+
             {hasFatalError ? (
-              <div className="py-8 text-center space-y-3">
+              <div className="py-6 text-center space-y-3">
                 <p className="text-muted-foreground">無法載入報名名單，請檢查網路後重試。</p>
                 <Button variant="outline" onClick={() => window.location.reload()}>
                   重新載入
                 </Button>
               </div>
-            ) : isLoading ? (
-              <div className="py-12 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">載入中...</p>
+            ) : regLoading ? (
+              <div className="py-6 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">載入報名名單中...</p>
+                {loadingTooLong && (
+                  <div className="flex flex-col items-center gap-2 mt-2">
+                    <p className="text-xs text-amber-600">連線較慢</p>
+                    <Button variant="outline" size="sm" onClick={() => refetchReg()}>
+                      重試
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : eligible.length === 0 ? (
               <p className="text-muted-foreground py-8">
@@ -196,20 +227,6 @@ export default function Payment() {
                       })}
                     </SelectContent>
                   </Select>
-                </div>
-
-                {/* 帳號顯示 + 一鍵複製 */}
-                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                  <Label className="text-muted-foreground">匯款帳號</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="font-mono text-lg font-semibold">{accountNumber}</span>
-                    <Button type="button" variant="outline" size="icon" onClick={copyAccount} title="複製帳號">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  {bankName && <p className="text-sm text-muted-foreground mt-1">銀行：{bankName}</p>}
-                  {accountName && <p className="text-sm text-muted-foreground">戶名：{accountName}</p>}
-                  {amount && <p className="text-sm text-muted-foreground mt-1">金額：{amount}</p>}
                 </div>
 
                 {/* 末五碼 */}

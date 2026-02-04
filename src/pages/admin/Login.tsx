@@ -63,16 +63,26 @@ export default function AdminLogin() {
         throw new Error('無法獲取用戶資訊');
       }
 
-      const { data: adminData, error: adminError } = await supabase
+      const adminsPromise = supabase
         .schema('huadrink')
         .from('admins')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
 
+      const timeoutResult = { data: null, error: { message: '逾時' } };
+      const timeoutPromise = new Promise<typeof timeoutResult>((resolve) => {
+        setTimeout(() => resolve(timeoutResult), 12_000);
+      });
+
+      const { data: adminData, error: adminError } = await Promise.race([
+        adminsPromise,
+        timeoutPromise,
+      ]);
+
       if (adminError || !adminData) {
         await supabase.auth.signOut();
-        throw new Error('您沒有管理員權限');
+        throw new Error(adminError?.message === '逾時' ? '查詢管理員權限逾時，請檢查網路後重試' : '您沒有管理員權限');
       }
 
       setAdminVerifiedCache(user.id);
@@ -86,20 +96,19 @@ export default function AdminLogin() {
       navigate('/admin');
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
-      console.error('[Login]', error);
-      const isInvalidCreds = /invalid|credentials|wrong|錯誤/i.test(msg);
-      const isNoAdmin = /管理員權限|admin/i.test(msg);
-      let description = msg;
-      if (isInvalidCreds) {
-        description = 'Email 或密碼不正確，請再確認後重試。';
-      } else if (isNoAdmin) {
-        description = '此帳號未列入管理員名單，請聯繫主辦單位或執行 setup-admin 加入。';
+      const isAbort = error != null && typeof error === 'object' && ((error as { name?: string }).name === 'AbortError' || /abort|signal is aborted/i.test(msg));
+      if (isAbort) {
+        toast({ title: '連線被中斷', description: '請再試一次', variant: 'destructive' });
+        try { await supabase.auth.signOut(); } catch {}
+      } else {
+        console.error('[Login]', error);
+        const isInvalidCreds = /invalid|credentials|wrong|錯誤/i.test(msg);
+        const isNoAdmin = /管理員權限|admin/i.test(msg);
+        let description = msg;
+        if (isInvalidCreds) description = 'Email 或密碼不正確，請再確認後重試。';
+        else if (isNoAdmin) description = '此帳號未列入管理員名單，請聯繫主辦單位或執行 setup-admin 加入。';
+        toast({ title: '登入失敗', description, variant: 'destructive' });
       }
-      toast({
-        title: '登入失敗',
-        description,
-        variant: 'destructive',
-      });
     } finally {
       setIsLoading(false);
     }

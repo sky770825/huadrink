@@ -22,18 +22,11 @@
 3. **Supabase 請求逾時（15 秒）**  
    自訂 `fetch`，為所有 Supabase 請求加上 15 秒逾時；逾時後拋出 AbortError，觸發 React Query retry，避免無限轉圈。
 
-## 三、資料庫索引（重要：解決內部付款嚴重延遲）
+## 三、資料庫索引（重要：解決內部付款與後台延遲）
 
-**根因**：`registrations` 表查詢 `WHERE type='internal' AND pay_status='unpaid'` 無索引時會做**全表掃描**，報名筆數一多就會嚴重延遲。
+**根因**：`registrations` 常用查詢無索引時會做**全表掃描**，報名筆數一多就會嚴重延遲。
 
-**解法**：在 Supabase SQL Editor 執行：
-
-```sql
-CREATE INDEX IF NOT EXISTS idx_registrations_type_pay_status
-  ON huadrink.registrations (type, pay_status);
-```
-
-或執行專案內 `supabase/add_registrations_index.sql`。
+**解法**：執行專案內 `supabase/add_registrations_index.sql`，或詳見 `DATABASE_NOTES.md`。
 
 ## 四、若仍不穩可檢查
 

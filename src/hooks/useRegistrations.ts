@@ -74,20 +74,42 @@ export function useRegistrations() {
   });
 }
 
+const PAYMENT_QUERY_TIMEOUT_MS = 15_000;
+
 /** 內部付款頁專用：只查「內部＋未付款」的 id / ref_code / contact_name，載入快 */
 export function usePaymentEligibleRegistrations() {
   return useQuery({
     queryKey: ['registrations', 'payment-eligible'],
-    queryFn: async (): Promise<Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[]> => {
-      const { data, error } = await huadrink
-        .from('registrations')
-        .select('id, ref_code, contact_name, type, pay_status')
-        .eq('type', 'internal')
-        .eq('pay_status', 'unpaid')
-        .order('contact_name', { ascending: true });
+    queryFn: async ({ signal }): Promise<Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[]> => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('連線逾時，請檢查網路後重試')), PAYMENT_QUERY_TIMEOUT_MS);
+        signal?.addEventListener('abort', () => {
+          clearTimeout(timeoutId!);
+          reject(new DOMException('Aborted', 'AbortError'));
+        });
+      });
 
-      if (error) throw error;
-      return (data || []) as Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[];
+      const fetchPromise = (async () => {
+        const { data, error } = await huadrink
+          .from('registrations')
+          .select('id, ref_code, contact_name, type, pay_status')
+          .eq('type', 'internal')
+          .eq('pay_status', 'unpaid')
+          .order('contact_name', { ascending: true });
+
+        if (error) throw error;
+        return (data || []) as Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[];
+      })();
+
+      try {
+        const result = await Promise.race([fetchPromise, timeoutPromise]);
+        clearTimeout(timeoutId!);
+        return result;
+      } catch (e) {
+        clearTimeout(timeoutId!);
+        throw e;
+      }
     },
     staleTime: 30 * 1000,
     retry: 2,

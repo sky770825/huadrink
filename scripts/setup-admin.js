@@ -67,7 +67,7 @@ async function main() {
 
   if (authError) {
     if (authError.message?.includes('already been registered')) {
-      console.log('此信箱已存在，改為查詢並加入 admins...');
+      console.log('此信箱已存在，改為更新密碼並加入 admins...');
       const { data: list } = await supabase.auth.admin.listUsers();
       const existing = list?.users?.find((u) => u.email === email);
       if (!existing) {
@@ -75,12 +75,19 @@ async function main() {
         process.exit(1);
       }
       const userId = existing.id;
+      // 重設密碼（確保可登入）
+      const { error: pwdError } = await supabase.auth.admin.updateUserById(userId, { password });
+      if (pwdError) {
+        console.warn('密碼更新失敗（可能密碼相同）:', pwdError.message);
+      } else {
+        console.log('已重設密碼');
+      }
       const { error: insertError } = await supabase.schema('huadrink').from('admins').upsert(
         { user_id: userId },
         { onConflict: 'user_id' }
       );
       if (insertError) throw insertError;
-      console.log('已將現有用戶加入 admins 表');
+      console.log('已確認 admins 表');
     } else {
       throw authError;
     }
