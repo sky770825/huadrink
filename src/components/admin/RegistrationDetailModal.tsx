@@ -80,7 +80,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
 
   return (
     <Dialog open={!!registrationId} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden min-w-0">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden min-w-0" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">報名詳情</DialogTitle>
         </DialogHeader>
@@ -204,12 +204,13 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
                   <p className="font-mono font-medium">{registration.pay_proof_last5}</p>
                 </div>
               )}
-              {getPaymentProofUrl(registration) && (
+              {(getPaymentProofUrl(registration) || registration.pay_proof_last5) && (
                 <div className="sm:col-span-2">
                   <Label className="text-muted-foreground">付款憑證</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <PaymentProofButton
-                      imageUrl={getPaymentProofUrl(registration)!}
+                      imageUrl={getPaymentProofUrl(registration)}
+                      registrationId={registration.id}
                       context={{ contact_name: registration.contact_name, ref_code: registration.ref_code, pay_proof_last5: registration.pay_proof_last5 ?? undefined }}
                     />
                   </div>

@@ -17,8 +17,9 @@ function parseAttendeeList(data: Json | null): Attendee[] {
   });
 }
 
-/** 列表不載入 pay_proof_base64（單筆可達數百 KB），點擊查看時再 fetch */
+/** 列表與詳情不載入 pay_proof_base64（單筆可達數百 KB），點擊查看憑證時再 fetch */
 const LIST_SELECT = 'id, ref_code, type, headcount, attendee_list, company, title, contact_name, phone, email, line_id, diet, diet_other, allergy_note, photo_consent, inviter, vip_note, invoice_needed, invoice_title, invoice_tax_id, pay_method, pay_status, pay_proof_url, pay_proof_last5, status, seat_zone, table_no, admin_note, created_at, updated_at';
+const DETAIL_SELECT = LIST_SELECT; // 詳情同列表，不載入 base64
 
 async function fetchRegistrations(): Promise<Registration[]> {
   const { data, error } = await huadrink
@@ -117,13 +118,23 @@ export function usePaymentEligibleRegistrations() {
   });
 }
 
-export function useRegistration(id: string) {
+/** 選項：是否載入 pay_proof_base64（單筆可達數百 KB，載入較慢） */
+export interface UseRegistrationOptions {
+  includePayProofBase64?: boolean;
+  /** 設為 false 時不發送請求（如：對話框未開啟） */
+  enabled?: boolean;
+}
+
+export function useRegistration(id: string, options?: UseRegistrationOptions) {
+  const includeProof = options?.includePayProofBase64 ?? false;
+  const enabled = options?.enabled ?? true;
   return useQuery({
-    queryKey: ['registration', id],
+    queryKey: ['registration', id, includeProof],
     queryFn: async (): Promise<Registration | null> => {
+      const select = includeProof ? '*' : DETAIL_SELECT;
       const { data, error } = await huadrink
         .from('registrations')
-        .select('*')
+        .select(select)
         .eq('id', id)
         .maybeSingle();
 
@@ -154,7 +165,7 @@ export function useRegistration(id: string) {
         pay_method: data.pay_method as Registration['pay_method'],
         pay_status: data.pay_status as Registration['pay_status'],
         pay_proof_url: data.pay_proof_url,
-        pay_proof_base64: data.pay_proof_base64 ?? undefined,
+        pay_proof_base64: includeProof && data.pay_proof_base64 ? data.pay_proof_base64 : undefined,
         pay_proof_last5: data.pay_proof_last5 ?? undefined,
         status: data.status as Registration['status'],
         seat_zone: data.seat_zone as Registration['seat_zone'],
@@ -164,7 +175,7 @@ export function useRegistration(id: string) {
         updated_at: data.updated_at,
       };
     },
-    enabled: !!id,
+    enabled: !!id && enabled,
   });
 }
 

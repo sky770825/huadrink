@@ -3,5 +3,5 @@ project_id = "sqgrnowrcvspxhuudrqc"
 # 付款憑證儲存桶（用 supabase seed buckets --linked 同步到遠端）
 [storage.buckets.payment-proofs]
 public = true
-file_size_limit = "5MiB"
+file_size_limit = "50MiB"
 allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]

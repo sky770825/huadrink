@@ -31,21 +31,26 @@ if (!url || !serviceKey) {
 
 const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
 
+const FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024; // 50MB
+
 async function main() {
   try {
-    const { data, error } = await supabase.storage.createBucket('payment-proofs', {
+    const bucketOpts = {
       public: true,
-      fileSizeLimit: 5242880,
+      fileSizeLimit: FILE_SIZE_LIMIT_BYTES,
       allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-    });
+    };
+    const { error } = await supabase.storage.createBucket('payment-proofs', bucketOpts);
     if (error) {
       if (error.message?.includes('already exists') || error.message?.includes('duplicate')) {
-        console.log('payment-proofs bucket 已存在，略過');
+        const { error: updateErr } = await supabase.storage.updateBucket('payment-proofs', { fileSizeLimit: FILE_SIZE_LIMIT_BYTES });
+        if (updateErr) console.warn('更新現有 bucket 限制失敗:', updateErr.message);
+        else console.log('payment-proofs bucket 已存在，已更新檔案限制為 50MB');
         process.exit(0);
       }
       throw error;
     }
-    console.log('payment-proofs bucket 建立成功');
+    console.log('payment-proofs bucket 建立成功（限制 50MB）');
   } catch (err) {
     console.error('建立失敗:', err.message);
     process.exit(1);

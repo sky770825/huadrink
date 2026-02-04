@@ -34,6 +34,27 @@ export default function AdminDashboard() {
   const [showUnregisteredModal, setShowUnregisteredModal] = useState(false);
   const [activeTab, setActiveTab] = useState('list');
   const [listPayStatusFilter, setListPayStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'pending'>('all');
+  const [listTypeFilter, setListTypeFilter] = useState<'all' | 'internal' | 'external' | 'vip'>('all');
+  const [listStatusFilter, setListStatusFilter] = useState<'all' | 'waitlist'>('all');
+
+  const goToListAndResetFilters = () => {
+    setListPayStatusFilter('all');
+    setListTypeFilter('all');
+    setListStatusFilter('all');
+    setActiveTab('list');
+  };
+  const goToListWithType = (type: 'all' | 'internal' | 'external' | 'vip') => {
+    setListPayStatusFilter('all');
+    setListTypeFilter(type);
+    setListStatusFilter('all');
+    setActiveTab('list');
+  };
+  const goToListWithStatus = (status: 'all' | 'waitlist') => {
+    setListPayStatusFilter('all');
+    setListTypeFilter('all');
+    setListStatusFilter(status);
+    setActiveTab('list');
+  };
 
   const unregisteredInternalMembers = useMemo(
     () => getUnregisteredInternalMembers(registrations || []),
@@ -60,32 +81,62 @@ export default function AdminDashboard() {
       <main className="container mx-auto flex-1 w-full min-w-0 px-3 sm:px-4 py-6 sm:py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4 mb-6">
-          <StatsCard title="總報名人數" value={isLoading ? '—' : stats.totalHeadcount} icon={Users} color="gold" />
+          <StatsCard
+            title="總報名人數"
+            value={isLoading ? '—' : stats.totalHeadcount}
+            icon={Users}
+            color="gold"
+            onClick={goToListAndResetFilters}
+          />
           <StatsCard
             title="已付款"
             value={isLoading ? '—' : stats.paid}
             icon={CreditCard}
             color="green"
-            onClick={() => { setListPayStatusFilter('paid'); setActiveTab('list'); }}
+            onClick={() => { setListPayStatusFilter('paid'); setListTypeFilter('all'); setListStatusFilter('all'); setActiveTab('list'); }}
           />
           <StatsCard
             title="審核付款"
             value={isLoading ? '—' : stats.pending}
             icon={Clock}
             color="purple"
-            onClick={() => { setListPayStatusFilter('pending'); setActiveTab('list'); }}
+            onClick={() => { setListPayStatusFilter('pending'); setListTypeFilter('all'); setListStatusFilter('all'); setActiveTab('list'); }}
           />
           <StatsCard
             title="未付款"
             value={isLoading ? '—' : stats.unpaid}
             icon={AlertCircle}
             color="red"
-            onClick={() => { setListPayStatusFilter('unpaid'); setActiveTab('list'); }}
+            onClick={() => { setListPayStatusFilter('unpaid'); setListTypeFilter('all'); setListStatusFilter('all'); setActiveTab('list'); }}
           />
-          <StatsCard title="VIP" value={isLoading ? '—' : stats.vip} icon={Crown} color="purple" />
-          <StatsCard title="外部來賓" value={isLoading ? '—' : stats.external} icon={UserPlus} color="blue" />
-          <StatsCard title="內部夥伴" value={isLoading ? '—' : stats.internal} icon={Users} color="default" />
-          <StatsCard title="候補" value={isLoading ? '—' : stats.waitlist} icon={Clock} color="default" />
+          <StatsCard
+            title="VIP"
+            value={isLoading ? '—' : stats.vip}
+            icon={Crown}
+            color="purple"
+            onClick={() => goToListWithType('vip')}
+          />
+          <StatsCard
+            title="外部來賓"
+            value={isLoading ? '—' : stats.external}
+            icon={UserPlus}
+            color="blue"
+            onClick={() => goToListWithType('external')}
+          />
+          <StatsCard
+            title="內部夥伴"
+            value={isLoading ? '—' : stats.internal}
+            icon={Users}
+            color="default"
+            onClick={() => goToListWithType('internal')}
+          />
+          <StatsCard
+            title="候補"
+            value={isLoading ? '—' : stats.waitlist}
+            icon={Clock}
+            color="default"
+            onClick={() => goToListWithStatus('waitlist')}
+          />
         </div>
 
         {/* Internal members: registered vs not registered (by name match) */}
@@ -99,6 +150,7 @@ export default function AdminDashboard() {
               value={isLoading ? '—' : stats.internalRegisteredCount}
               icon={Users}
               color="default"
+              onClick={() => goToListWithType('internal')}
             />
             <button
               type="button"
@@ -126,7 +178,7 @@ export default function AdminDashboard() {
 
         {/* 未報名內部成員名單彈窗 */}
         <Dialog open={showUnregisteredModal} onOpenChange={setShowUnregisteredModal}>
-          <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col min-w-0">
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col min-w-0" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle>未報名內部成員名單（依姓名比對，僅供參考）</DialogTitle>
             </DialogHeader>
@@ -169,7 +221,7 @@ export default function AdminDashboard() {
         </section>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+        <Tabs value={activeTab ?? 'list'} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
           <TabsList className="bg-muted/50 flex flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="list" className="text-xs sm:text-sm px-3 py-1.5">名單管理</TabsTrigger>
             <TabsTrigger value="add" className="text-xs sm:text-sm px-3 py-1.5">提交名單</TabsTrigger>
@@ -189,6 +241,10 @@ export default function AdminDashboard() {
                 onViewDetail={setSelectedRegistrationId}
                 externalPayStatusFilter={listPayStatusFilter}
                 onPayStatusFilterChange={(v) => setListPayStatusFilter(v)}
+                externalTypeFilter={listTypeFilter}
+                onTypeFilterChange={(v) => setListTypeFilter(v)}
+                externalStatusFilter={listStatusFilter}
+                onStatusFilterChange={(v) => setListStatusFilter(v)}
               />
             )}
           </TabsContent>

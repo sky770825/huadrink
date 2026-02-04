@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,6 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Eye, Loader2 } from 'lucide-react';
+import { useRegistration } from '@/hooks/useRegistrations';
+import { getPaymentProofUrl } from '@/lib/utils';
 
 /** 顯示於憑證旁，供審核時核對是否為正確報名者 */
 export interface PaymentProofContext {
@@ -23,11 +25,28 @@ interface PaymentProofDialogProps {
   isLoading?: boolean;
   /** 報名者資訊，供審核時核對憑證是否對應正確 */
   context?: PaymentProofContext | null;
+  /** 載入逾時時可呼叫重試 */
+  onRetry?: () => void;
 }
 
 /** 點擊可開啟付款憑證的按鈕（用於 RegistrationDetailModal） */
-export function PaymentProofButton({ imageUrl, context }: { imageUrl: string; context?: PaymentProofContext }) {
+export function PaymentProofButton({
+  imageUrl,
+  registrationId,
+  context,
+}: {
+  imageUrl?: string | null;
+  /** 當無 imageUrl 時，以 registrationId 按需載入憑證（用於 base64 儲存） */
+  registrationId?: string | null;
+  context?: PaymentProofContext;
+}) {
   const [open, setOpen] = useState(false);
+  const needFetch = !imageUrl && !!registrationId && open;
+  const { data: regWithProof, isLoading, refetch } = useRegistration(registrationId || '', {
+    includePayProofBase64: true,
+    enabled: needFetch,
+  });
+  const resolvedUrl = imageUrl ?? (regWithProof ? getPaymentProofUrl(regWithProof) : null);
   return (
     <>
       <Button
@@ -39,12 +58,32 @@ export function PaymentProofButton({ imageUrl, context }: { imageUrl: string; co
         <Eye className="w-4 h-4" />
         查看憑證
       </Button>
-      <PaymentProofDialog open={open} onOpenChange={setOpen} imageUrl={imageUrl} context={context} />
+      <PaymentProofDialog
+        open={open}
+        onOpenChange={setOpen}
+        imageUrl={resolvedUrl}
+        isLoading={needFetch && isLoading}
+        context={context}
+        onRetry={needFetch ? () => refetch() : undefined}
+      />
     </>
   );
 }
 
-export function PaymentProofDialog({ open, onOpenChange, imageUrl, isLoading, context }: PaymentProofDialogProps) {
+const LOADING_TIMEOUT_MS = 25000; // 25 秒後顯示逾時提示
+
+export function PaymentProofDialog({ open, onOpenChange, imageUrl, isLoading, context, onRetry }: PaymentProofDialogProps) {
+  const [loadingTooLong, setLoadingTooLong] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingTooLong(false);
+      return;
+    }
+    const t = setTimeout(() => setLoadingTooLong(true), LOADING_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[90vw] max-h-[90vh] sm:max-w-2xl">
@@ -65,8 +104,19 @@ export function PaymentProofDialog({ open, onOpenChange, imageUrl, isLoading, co
           </div>
         )}
         {isLoading ? (
-          <div className="flex justify-center py-12">
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">正在載入付款憑證圖片，圖片較大請稍候…</p>
+            {loadingTooLong && (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs text-amber-600">載入較久，若持續無回應請重試</p>
+                {onRetry && (
+                  <Button variant="outline" size="sm" onClick={() => onRetry()}>
+                    重試
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         ) : imageUrl ? (
           <div className="flex justify-center">

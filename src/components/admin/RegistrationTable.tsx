@@ -47,6 +47,12 @@ interface RegistrationTableProps {
   /** 由外部（如 StatsCard 點擊）控制付款狀態篩選 */
   externalPayStatusFilter?: 'all' | 'paid' | 'unpaid' | 'pending';
   onPayStatusFilterChange?: (v: 'all' | 'paid' | 'unpaid' | 'pending') => void;
+  /** 由外部控制類型篩選（內部/外部/VIP） */
+  externalTypeFilter?: 'all' | 'internal' | 'external' | 'vip';
+  onTypeFilterChange?: (v: 'all' | 'internal' | 'external' | 'vip') => void;
+  /** 由外部控制狀態篩選（候補等） */
+  externalStatusFilter?: 'all' | 'waitlist';
+  onStatusFilterChange?: (v: 'all' | 'waitlist') => void;
 }
 
 export function RegistrationTable({
@@ -54,12 +60,21 @@ export function RegistrationTable({
   onViewDetail,
   externalPayStatusFilter,
   onPayStatusFilterChange,
+  externalTypeFilter,
+  onTypeFilterChange,
+  externalStatusFilter,
+  onStatusFilterChange,
 }: RegistrationTableProps) {
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [internalTypeFilter, setInternalTypeFilter] = useState<string>('all');
+  const typeFilter = externalTypeFilter ?? internalTypeFilter;
+  const setTypeFilter = onTypeFilterChange ?? setInternalTypeFilter;
   const [internalPayStatusFilter, setInternalPayStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'pending'>('all');
   const payStatusFilter = externalPayStatusFilter ?? internalPayStatusFilter;
   const setPayStatusFilter = onPayStatusFilterChange ?? setInternalPayStatusFilter;
+  const [internalStatusFilter, setInternalStatusFilter] = useState<'all' | 'waitlist'>('all');
+  const statusFilter = externalStatusFilter ?? internalStatusFilter;
+  const setStatusFilter = onStatusFilterChange ?? setInternalStatusFilter;
   const [duplicateFilter, setDuplicateFilter] = useState<'all' | 'duplicates'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -73,7 +88,7 @@ export function RegistrationTable({
   const [proofRegIdToFetch, setProofRegIdToFetch] = useState<string | null>(null);
   /** 憑證對應的報名者資訊，供審核時核對 */
   const [proofViewingContext, setProofViewingContext] = useState<PaymentProofContext | null>(null);
-  const { data: proofRegData } = useRegistration(proofRegIdToFetch || '');
+  const { data: proofRegData, refetch: refetchProof } = useRegistration(proofRegIdToFetch || '', { includePayProofBase64: true });
   /** 欲改為未付款的報名（需確認後一併清除付款憑證） */
   const [pendingUnpaidReg, setPendingUnpaidReg] = useState<Registration | null>(null);
 
@@ -81,7 +96,7 @@ export function RegistrationTable({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [payStatusFilter, typeFilter]);
+  }, [payStatusFilter, typeFilter, statusFilter]);
 
   const filtered = registrations.filter((reg) => {
     const matchesSearch =
@@ -94,11 +109,13 @@ export function RegistrationTable({
     const matchesPayStatus =
       payStatusFilter === 'all' || reg.pay_status === payStatusFilter;
 
+    const matchesStatus = statusFilter === 'all' || reg.status === statusFilter;
+
     const isDuplicate = duplicateIds.has(reg.id);
     const matchesDuplicate =
       duplicateFilter === 'all' || (duplicateFilter === 'duplicates' && isDuplicate);
 
-    return matchesSearch && matchesType && matchesPayStatus && matchesDuplicate;
+    return matchesSearch && matchesType && matchesPayStatus && matchesStatus && matchesDuplicate;
   });
 
   /** 預設照序號排序：內部夥伴依成員編號，其餘依報名編號 */
@@ -301,6 +318,15 @@ export function RegistrationTable({
             <SelectItem value="paid">已付款</SelectItem>
             <SelectItem value="unpaid">尚未付款 {unpaidList.length > 0 ? `(${unpaidList.length})` : ''}</SelectItem>
             <SelectItem value="pending">審核付款 {pendingList.length > 0 ? `(${pendingList.length})` : ''}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'waitlist')}>
+          <SelectTrigger className="w-full sm:w-[110px] input-luxury min-w-0">
+            <SelectValue placeholder="狀態" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部</SelectItem>
+            <SelectItem value="waitlist">候補</SelectItem>
           </SelectContent>
         </Select>
         <Select value={duplicateFilter} onValueChange={(v) => setDuplicateFilter(v as 'all' | 'duplicates')}>
@@ -517,6 +543,7 @@ export function RegistrationTable({
         imageUrl={proofImageUrl ?? (proofRegData ? getPaymentProofUrl(proofRegData) : null)}
         isLoading={!!proofRegIdToFetch && !proofRegData}
         context={proofViewingContext ?? (proofRegData ? { contact_name: proofRegData.contact_name, ref_code: proofRegData.ref_code, pay_proof_last5: proofRegData.pay_proof_last5 ?? undefined } : null)}
+        onRetry={!!proofRegIdToFetch ? () => refetchProof() : undefined}
       />
 
       {/* 已付款 → 尚未付款：確認後一併清除資料庫中的付款憑證 */}

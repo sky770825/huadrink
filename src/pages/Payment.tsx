@@ -102,24 +102,25 @@ export default function Payment() {
 
     setIsSubmitting(true);
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          const base64Data = result.includes(',') ? result.split(',')[1] : result;
-          resolve(base64Data || '');
-        };
-        reader.onerror = () => reject(new Error('無法讀取圖片'));
-        reader.readAsDataURL(file);
-      });
+      // 上傳至 Supabase Storage，取得公開 URL
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
+      const path = `${selectedId}/proof.${safeExt}`;
 
-      if (!base64) throw new Error('無法轉換圖片');
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('payment-proofs')
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(uploadData.path);
+      const payProofUrl = urlData.publicUrl;
 
       const { error: rpcError } = await supabase.schema('huadrink').rpc('submit_payment_proof', {
         p_registration_id: selectedId,
-        p_pay_proof_url: null,
+        p_pay_proof_url: payProofUrl,
         p_pay_proof_last5: trimmed,
-        p_pay_proof_base64: base64,
+        p_pay_proof_base64: null,
       });
 
       if (rpcError) throw rpcError;
