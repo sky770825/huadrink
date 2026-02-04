@@ -16,26 +16,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { REGISTRATION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/constants';
 import { getMemberByContactName } from '@/lib/members';
+import { getDuplicateGroupIds, sortByMemberId } from '@/lib/registrations';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Trash2, Copy, Wallet, Loader2 } from 'lucide-react';
 import { getPaymentProofUrl } from '@/lib/utils';
 import { PaymentProofDialog, type PaymentProofContext } from '@/components/admin/PaymentProofDialog';
 import type { Registration } from '@/types/registration';
-
-/** 同一人重複報名：以聯絡人姓名 + 手機正規化後為 key，回傳該 key 對應的報名 id 列表（僅保留有重複的） */
-function getDuplicateGroupIds(registrations: Registration[]): Set<string> {
-  const keyToIds = new Map<string, string[]>();
-  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '');
-  registrations.forEach((reg) => {
-    const key = `${norm(reg.contact_name)}|${(reg.phone || '').trim()}`;
-    if (!keyToIds.has(key)) keyToIds.set(key, []);
-    keyToIds.get(key)!.push(reg.id);
-  });
-  const duplicateIds = new Set<string>();
-  keyToIds.forEach((ids) => {
-    if (ids.length > 1) ids.forEach((id) => duplicateIds.add(id));
-  });
-  return duplicateIds;
-}
 import { format } from 'date-fns';
 import { downloadCSV } from '@/lib/googleSheets';
 import { useToast } from '@/hooks/use-toast';
@@ -119,19 +104,7 @@ export function RegistrationTable({
   });
 
   /** 預設照序號排序：內部夥伴依成員編號，其餘依報名編號 */
-  const sortedFiltered = [...filtered].sort((a, b) => {
-    const aInternal = a.type === 'internal';
-    const bInternal = b.type === 'internal';
-    if (aInternal && bInternal) {
-      const memberA = getMemberByContactName(a.contact_name);
-      const memberB = getMemberByContactName(b.contact_name);
-      const idA = memberA?.id ?? 9999;
-      const idB = memberB?.id ?? 9999;
-      return idA - idB;
-    }
-    if (aInternal !== bInternal) return aInternal ? -1 : 1;
-    return (a.ref_code || '').localeCompare(b.ref_code || '');
-  });
+  const sortedFiltered = sortByMemberId(filtered);
 
   const unpaidList = registrations.filter((r) => r.pay_status === 'unpaid');
   const pendingList = registrations.filter((r) => r.pay_status === 'pending');

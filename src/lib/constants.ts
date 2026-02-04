@@ -7,6 +7,18 @@ export const EVENT_INFO = {
   deadlineDisplay: '2/7（週六，含）',
 };
 
+/** 活動場地與交通資訊 */
+export const VENUE_INFO = {
+  name: '晶宴‧日光香頌',
+  nameAlt: '原民生館',
+  address: '台北市中山區民生東路三段8號1樓',
+  addressNote: '訂席櫃台',
+  phone: '02-2517-9977',
+  parking: '南山便利停車場 B5~B6',
+  parkingNote: '出入口於民生東路上汎德汽車旁',
+  mapsUrl: 'https://goo.gl/maps/gAJa9rAJ8LW3myMS9',
+};
+
 export const REGISTRATION_TYPE_LABELS: Record<string, string> = {
   internal: '內部夥伴（分會夥伴）',
   external: '外部來賓',

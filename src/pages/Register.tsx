@@ -11,6 +11,7 @@ import { Step1Form } from '@/components/register/Step1Form';
 import { Step2Form } from '@/components/register/Step2Form';
 import { SuccessPage } from '@/components/register/SuccessPage';
 import { useSystemSettings, isDeadlinePassed } from '@/hooks/useSystemSettings';
+import { useRegistrations } from '@/hooks/useRegistrations';
 import { supabase } from '@/integrations/supabase/client';
 import { huadrink } from '@/lib/supabase-huadrink';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { REGISTRATION_TYPE_LABELS } from '@/lib/constants';
 import { formatDeadlineDisplay } from '@/lib/utils';
+import { generateRefCode } from '@/lib/refCode';
 import type { Registration, RegistrationFormData, Attendee, RegistrationType } from '@/types/registration';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -95,6 +97,7 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedRegistration, setSubmittedRegistration] = useState<Registration | null>(null);
   const { data: settings, isLoading: settingsLoading } = useSystemSettings();
+  const { data: registrations } = useRegistrations();
   const { toast } = useToast();
 
   const form = useForm<RegistrationFormData>({
@@ -166,12 +169,6 @@ export default function Register() {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const generateRefCode = () => {
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `HUADRINK-${random}`;
-  };
-
-
   const onSubmit = async (data: RegistrationFormData) => {
     // 送出前再次檢查報名截止日（與後台同步，避免表單開著過期仍送出）
     const deadlineToCheck = settings?.deadline;
@@ -187,7 +184,7 @@ export default function Register() {
     setIsSubmitting(true);
     
     try {
-      const refCode = generateRefCode();
+      const refCode = generateRefCode('HUADRINK');
 
       // Convert attendee_list to JSON-compatible format
       const attendeeListJson = (data.attendee_list || []).map((a) => ({
@@ -291,7 +288,7 @@ export default function Register() {
     setIsSubmitting(true);
     
     try {
-      const refCode = generateRefCode();
+      const refCode = generateRefCode('HUADRINK');
 
       const insertData = {
         ref_code: refCode,
@@ -556,7 +553,7 @@ export default function Register() {
                 <Stepper currentStep={currentStep} />
                 
                 <FormCard>
-                  {currentStep === 1 && <Step1Form form={form} />}
+                  {currentStep === 1 && <Step1Form form={form} registrations={registrations || []} />}
                   {currentStep === 2 && <Step2Form form={form} />}
                   
                   {/* Navigation */}

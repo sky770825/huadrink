@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Diamond, ArrowRight, CalendarDays, Clock, Users, Star } from 'lucide-react';
+import { Diamond, ArrowRight, CalendarDays, Clock, Users, Star, MapPin, Car, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { EVENT_INFO } from '@/lib/constants';
+import { EVENT_INFO, VENUE_INFO } from '@/lib/constants';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { formatDeadlineDisplay } from '@/lib/utils';
 
@@ -13,6 +13,16 @@ type CountdownState = {
   seconds: number;
   isExpired: boolean;
 };
+
+function CountdownUnit({ value, label, pad = 0 }: { value: number; label: string; pad?: number }) {
+  const display = pad ? value.toString().padStart(pad, '0') : value.toString();
+  return (
+    <div className="flex flex-col items-center min-w-[2.75rem] px-2 py-1.5 rounded-lg bg-background/80 border border-primary/10">
+      <span className="font-serif text-lg font-semibold tabular-nums text-primary leading-none">{display}</span>
+      <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{label}</span>
+    </div>
+  );
+}
 
 export default function Index() {
   const { data: settings } = useSystemSettings();
@@ -93,7 +103,7 @@ export default function Index() {
           </div>
 
           {/* CTA Button + Countdown */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
             <Link to="/register">
               <Button size="lg" className="group gap-2 px-8 py-5 md:py-6 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-gold">
                 立即報名
@@ -107,51 +117,26 @@ export default function Index() {
             </Link>
 
             {/* Deadline Notice + Countdown */}
-            <div className="space-y-3 text-muted-foreground">
-              {/* Mobile layout */}
-              <div className="sm:hidden space-y-2">
-                <p className="text-lg font-medium whitespace-nowrap">
-                  報名截止：
-                  <span className="text-primary font-semibold"> {deadlineDisplay}</span>
-                </p>
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-primary font-semibold tracking-wide text-sm">
-                    倒數
-                  </span>
-                  <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-3 py-1.5 text-sm shadow-sm whitespace-nowrap">
-                    {countdown.isExpired ? (
-                      <span className="text-destructive font-semibold">報名已截止</span>
-                    ) : (
-                      <span className="tabular-nums tracking-wide font-semibold">
-                        {countdown.days} 天 {countdown.hours.toString().padStart(2, '0')} 時{' '}
-                        {countdown.minutes.toString().padStart(2, '0')} 分{' '}
-                        {countdown.seconds.toString().padStart(2, '0')} 秒
-                      </span>
-                    )}
+            <div className="w-full max-w-sm sm:max-w-[460px] mx-auto">
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/5 to-transparent px-5 py-4 shadow-soft">
+                <div className="flex flex-col sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between gap-3">
+                  <div className="text-center sm:text-left sm:shrink-0">
+                    <p className="text-xs uppercase tracking-widest text-primary/80 mb-0.5">報名截止</p>
+                    <p className="font-serif text-xl md:text-2xl font-semibold text-foreground">{deadlineDisplay}</p>
                   </div>
-                </div>
-              </div>
-
-              {/* Tablet / Desktop layout */}
-              <div className="hidden sm:block space-y-1 text-base">
-                <p className="text-lg">
-                  報名截止：
-                  <span className="text-primary font-semibold"> {deadlineDisplay}</span>
-                </p>
-                <div className="inline-flex items-center justify-center rounded-full border border-primary/40 bg-background/80 px-5 py-2.5 text-lg shadow-sm whitespace-nowrap">
                   {countdown.isExpired ? (
-                    <span className="text-destructive font-semibold">報名已截止</span>
+                    <div className="flex justify-center sm:justify-end">
+                      <span className="inline-flex items-center px-4 py-2 rounded-lg bg-destructive/10 text-destructive font-semibold text-sm">
+                        報名已截止
+                      </span>
+                    </div>
                   ) : (
-                    <>
-                      <span className="text-primary font-semibold tracking-wide mr-2">
-                        倒數
-                      </span>
-                      <span className="tabular-nums tracking-wide font-semibold">
-                        {countdown.days} 天 {countdown.hours.toString().padStart(2, '0')} 時{' '}
-                        {countdown.minutes.toString().padStart(2, '0')} 分{' '}
-                        {countdown.seconds.toString().padStart(2, '0')} 秒
-                      </span>
-                    </>
+                    <div className="flex flex-wrap sm:flex-nowrap justify-center sm:justify-end gap-2">
+                      <CountdownUnit value={countdown.days} label="天" />
+                      <CountdownUnit value={countdown.hours} label="時" pad={2} />
+                      <CountdownUnit value={countdown.minutes} label="分" pad={2} />
+                      <CountdownUnit value={countdown.seconds} label="秒" pad={2} />
+                    </div>
                   )}
                 </div>
               </div>
@@ -195,7 +180,7 @@ export default function Index() {
         </section>
 
         {/* Timeline / Agenda Section */}
-        <section className="max-w-4xl mx-auto px-1 sm:px-0 min-w-0">
+        <section className="max-w-5xl mx-auto px-1 sm:px-0 min-w-0">
           <div className="mb-6 text-left sm:text-center">
             <h2 className="font-serif text-2xl md:text-3xl text-foreground mb-2">當晚流程一覽</h2>
             <p className="text-sm text-muted-foreground">
@@ -248,6 +233,64 @@ export default function Index() {
           </div>
         </section>
 
+        {/* Venue & Transportation Section */}
+        <section className="max-w-5xl mx-auto px-1 sm:px-0 min-w-0">
+          <div className="mb-6 text-left sm:text-center">
+            <h2 className="font-serif text-2xl md:text-3xl text-foreground mb-2">活動地點</h2>
+            <p className="text-sm text-muted-foreground">
+              場地與停車資訊，方便當天規劃交通。
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-background/80 overflow-hidden">
+            {/* 場地名稱 + 地圖按鈕 */}
+            <div className="px-4 py-4 md:px-6 md:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
+                  <MapPin className="w-5 h-5 text-primary" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-foreground">
+                    {VENUE_INFO.name}
+                    <span className="text-sm font-normal text-muted-foreground ml-1">（{VENUE_INFO.nameAlt}）</span>
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {VENUE_INFO.address}
+                    {VENUE_INFO.addressNote && (
+                      <span className="text-foreground/80">【{VENUE_INFO.addressNote}】</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <a
+                href={VENUE_INFO.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition-colors text-sm font-medium shrink-0"
+              >
+                <ExternalLink className="w-4 h-4" />
+                開啟地圖
+              </a>
+            </div>
+
+            {/* 停車場 */}
+            <div className="px-4 py-3 md:px-6 md:py-4 flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 shrink-0 mt-0.5">
+                <Car className="w-4 h-4 text-primary" strokeWidth={1.5} />
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground">停車場</span>
+                <p className="text-sm md:text-base font-medium text-foreground mt-0.5">
+                  {VENUE_INFO.parking}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {VENUE_INFO.parkingNote}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Bottom CTA Section */}
         <section className="max-w-3xl mx-auto text-center pb-6 px-2 sm:px-0 min-w-0">
           <div className="rounded-3xl border border-primary/20 bg-background/80 px-5 py-7 md:px-10 md:py-10 shadow-gold/40">
@@ -284,7 +327,7 @@ export default function Index() {
         </section>
       </main>
       <footer className="w-full border-t border-border/40 bg-background/60">
-        <div className="container mx-auto px-4 py-4 text-center text-[11px] sm:text-xs text-muted-foreground">
+        <div className="container mx-auto px-4 py-6 text-center text-[11px] sm:text-xs text-muted-foreground">
           2026年 華地產鑽石分會 資訊組 蔡濬瑒 製
         </div>
       </footer>

@@ -3,6 +3,7 @@ import { huadrink } from '@/lib/supabase-huadrink';
 import type { Registration, Attendee } from '@/types/registration';
 import type { Json } from '@/integrations/supabase/types';
 import { MEMBERS } from '@/lib/members';
+import { generateRefCode } from '@/lib/refCode';
 
 function parseAttendeeList(data: Json | null): Attendee[] {
   if (!data || !Array.isArray(data)) return [];
@@ -205,8 +206,10 @@ export function useUpdateRegistration() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['registrations', 'payment-eligible'] });
+      queryClient.invalidateQueries({ queryKey: ['registration', id] });
     },
   });
 }
@@ -326,13 +329,7 @@ export function useCreateRegistration() {
 
   return useMutation({
     mutationFn: async (params: CreateRegistrationParams) => {
-      // 生成 ref_code
-      const generateRefCode = () => {
-        const timestamp = Date.now().toString().slice(-6);
-        return `ADMIN-${timestamp}`;
-      };
-
-      const refCode = generateRefCode();
+      const refCode = generateRefCode('ADMIN');
 
       // 轉換 attendee_list 為 JSON 格式
       const attendeeListJson = (params.attendee_list || []).map((a) => ({
@@ -379,6 +376,7 @@ export function useCreateRegistration() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['registrations', 'payment-eligible'] });
     },
   });
 }
@@ -397,6 +395,8 @@ export function useDeleteRegistration() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['registrations', 'payment-eligible'] });
     },
   });
 }
+

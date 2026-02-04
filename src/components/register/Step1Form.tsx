@@ -4,15 +4,18 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormSection } from './FormCard';
 import { REGISTRATION_TYPE_LABELS, EVENT_INFO } from '@/lib/constants';
-import { MEMBERS } from '@/lib/members';
+import { MEMBERS, getUnregisteredInternalMembers } from '@/lib/members';
 import type { RegistrationFormData } from '@/types/registration';
 import { Calendar, Clock } from 'lucide-react';
 
 interface Step1FormProps {
   form: UseFormReturn<RegistrationFormData>;
+  /** 已存在的報名名單，用以排除已報名的內部成員（與後台連動） */
+  registrations?: Array<{ type: string; contact_name?: string | null }>;
 }
 
-export function Step1Form({ form }: Step1FormProps) {
+export function Step1Form({ form, registrations = [] }: Step1FormProps) {
+  const availableMembers = getUnregisteredInternalMembers(registrations);
   const watchType = form.watch('type');
   const watchMemberId = form.watch('member_id');
 
@@ -134,24 +137,30 @@ export function Step1Form({ form }: Step1FormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="max-h-[300px]">
-                        {MEMBERS.map((member) => (
-                          <SelectItem key={member.id} value={member.id.toString()}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {member.id}. {member.name}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {member.specialty}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {availableMembers.length === 0 ? (
+                          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                            所有內部成員皆已報名
+                          </div>
+                        ) : (
+                          availableMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.id.toString()}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">
+                                  {member.id}. {member.name}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {member.specialty}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
                     {watchMemberId && (
                       <p className="text-sm text-muted-foreground mt-2">
-                        已選擇：{MEMBERS.find(m => m.id === watchMemberId)?.name}
+                        已選擇：{availableMembers.find(m => m.id === watchMemberId)?.name ?? MEMBERS.find(m => m.id === watchMemberId)?.name}
                       </p>
                     )}
                   </FormItem>

@@ -68,10 +68,9 @@ export interface RegistrationFormData {
   allergy_note?: string;
   photo_consent: boolean;
 
-  // Step 3
+  // Step 3（報名流程目前僅 Step1+2，付款憑證由 /payment 頁上傳）
   pay_method: PaymentMethod;
   pay_status: PaymentStatus;
-  pay_proof_file?: File;
 }
 
 export interface SystemSettings {

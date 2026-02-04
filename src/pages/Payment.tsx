@@ -12,21 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Hero } from '@/components/register/Hero';
 import { FormCard } from '@/components/register/FormCard';
 import { getMemberByContactName } from '@/lib/members';
+import { sortByMemberId } from '@/lib/registrations';
 import { Copy, Loader2, Upload, ArrowLeft, Camera } from 'lucide-react';
 import type { Registration } from '@/types/registration';
-
-/** 依內部編號排序（API 已篩選內部＋未付款） */
-function sortByMemberId(
-  list: Pick<Registration, 'id' | 'ref_code' | 'contact_name'>[]
-): Pick<Registration, 'id' | 'ref_code' | 'contact_name'>[] {
-  return [...list].sort((a, b) => {
-    const memberA = getMemberByContactName(a.contact_name);
-    const memberB = getMemberByContactName(b.contact_name);
-    const idA = memberA?.id ?? 9999;
-    const idB = memberB?.id ?? 9999;
-    return idA - idB;
-  });
-}
 
 export default function Payment() {
   const queryClient = useQueryClient();
@@ -170,7 +158,7 @@ export default function Payment() {
             {/* 匯款帳號區塊：立即顯示（有 fallback），不等設定載入 */}
             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mb-6">
               <Label className="text-muted-foreground">匯款帳號</Label>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1" style={{ backgroundClip: 'unset', WebkitBackgroundClip: 'unset' }}>
                 <span className="font-mono text-lg font-semibold">{accountNumber}</span>
                 <Button type="button" variant="outline" size="icon" onClick={copyAccount} title="複製帳號">
                   <Copy className="w-4 h-4" />
@@ -178,7 +166,7 @@ export default function Payment() {
               </div>
               {bankName && <p className="text-sm text-muted-foreground mt-1">銀行：{bankName}</p>}
               {accountName && <p className="text-sm text-muted-foreground">戶名：{accountName}</p>}
-              {amount && <p className="text-sm text-muted-foreground mt-1">金額：{amount}</p>}
+              {amount && <p className="text-base text-muted-foreground mt-1">金額：{amount}</p>}
             </div>
 
             {hasFatalError ? (
@@ -238,7 +226,7 @@ export default function Payment() {
                     onChange={(e) => setLast5(e.target.value.replace(/\D/g, '').slice(0, 5))}
                     placeholder="請輸入 5 位數字"
                     maxLength={5}
-                    className="input-luxury mt-1 w-32 font-mono"
+                    className="input-luxury mt-1 w-36 min-h-11 py-2.5 font-mono text-sm leading-normal"
                   />
                 </div>
 
