@@ -29,6 +29,7 @@ export default function Payment() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingTooLong, setLoadingTooLong] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   useEffect(() => {
     if (!regLoading) {
@@ -55,18 +56,107 @@ export default function Payment() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /** 單張圖片建議不超過 8MB，避免上傳過久或卡住 */
+  const MAX_FILE_BYTES = 8 * 1024 * 1024;
+  /** 超過 100KB 就壓縮，確保幾百 KB 的 PNG 不會原檔上傳卡住 */
+  const COMPRESS_THRESHOLD_BYTES = 100 * 1024;
+
+  /** 使用 Canvas 壓縮圖片：最長邊不超過 maxWidth，輸出 JPEG quality */
+  function compressImage(file: File, maxWidth = 1920, quality = 0.85): Promise<File> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const scale = w > h ? maxWidth / w : maxWidth / h;
+        const width = scale >= 1 ? w : Math.round(w * scale);
+        const height = scale >= 1 ? h : Math.round(h * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const name = file.name.replace(/\.[^.]+$/i, '.jpg');
+            resolve(new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() }));
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+      img.src = url;
+    });
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f && f.type.startsWith('image/')) {
-      setFile(f);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(URL.createObjectURL(f));
+      if (f.size > MAX_FILE_BYTES) {
+        toast({
+          title: '檔案過大',
+          description: '請上傳 8MB 以內的圖片，或先壓縮後再上傳',
+          variant: 'destructive',
+        });
+        setFile(null);
+        setPreviewUrl(null);
+        e.target.value = '';
+        return;
+      }
+      const needCompress = f.size > COMPRESS_THRESHOLD_BYTES;
+      if (needCompress) {
+        setIsCompressing(true);
+        toast({ title: '圖片壓縮中…', duration: 2000 });
+      }
+      try {
+        const finalFile = needCompress ? await compressImage(f) : f;
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setFile(finalFile);
+        setPreviewUrl(URL.createObjectURL(finalFile));
+        if (needCompress) {
+          toast({
+            title: '已壓縮',
+            description: `可送出（約 ${(finalFile.size / 1024).toFixed(0)} KB）`,
+            duration: 2500,
+          });
+        }
+      } catch {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setFile(f);
+        setPreviewUrl(URL.createObjectURL(f));
+        toast({ title: '壓縮略過，使用原圖', variant: 'destructive', duration: 2000 });
+      } finally {
+        setIsCompressing(false);
+      }
     } else if (f) {
       toast({ title: '請上傳圖片檔（JPG、PNG 等）', variant: 'destructive' });
       setFile(null);
       setPreviewUrl(null);
     }
+    e.target.value = '';
   };
+
+  /** 為 Promise 加上逾時，避免 Supabase 無回應時一直卡住 */
+  function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(message)), ms)
+    );
+    return Promise.race([promise, timeout]);
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,26 +180,43 @@ export default function Payment() {
 
     setIsSubmitting(true);
     try {
-      // 上傳至 Supabase Storage，取得公開 URL
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      // 送出前再壓縮一次：若檔案仍 > 200KB（例如選圖時未壓到），先壓縮再傳，避免 700KB PNG 等大檔卡住
+      let fileToUpload = file;
+      if (file.size > 200 * 1024) {
+        fileToUpload = await compressImage(file);
+      }
+
+      const ext = fileToUpload.name.split('.').pop()?.toLowerCase() || 'jpg';
       const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
       const path = `${selectedId}/proof.${safeExt}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const uploadPromise = supabase.storage
         .from('payment-proofs')
-        .upload(path, file, { upsert: true, contentType: file.type });
+        .upload(path, fileToUpload, { upsert: true, contentType: fileToUpload.type });
+
+      const { data: uploadData, error: uploadError } = await withTimeout(
+        uploadPromise,
+        90000,
+        '上傳逾時（約 90 秒），請檢查網路後重試'
+      );
 
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(uploadData.path);
       const payProofUrl = urlData.publicUrl;
 
-      const { error: rpcError } = await supabase.schema('huadrink').rpc('submit_payment_proof', {
+      const rpcPromise = supabase.schema('huadrink').rpc('submit_payment_proof', {
         p_registration_id: selectedId,
         p_pay_proof_url: payProofUrl,
         p_pay_proof_last5: trimmed,
         p_pay_proof_base64: null,
       });
+
+      const { error: rpcError } = await withTimeout(
+        rpcPromise,
+        20000,
+        '寫入資料逾時，請稍後再試'
+      );
 
       if (rpcError) throw rpcError;
 
@@ -126,10 +233,12 @@ export default function Payment() {
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error) {
       console.error('Payment submit error:', error);
+      const message = error instanceof Error ? error.message : '請檢查網路後重試';
       toast({
         title: '上傳失敗',
-        description: error instanceof Error ? error.message : '請稍後再試',
+        description: message,
         variant: 'destructive',
+        duration: 6000,
       });
     } finally {
       setIsSubmitting(false);
@@ -246,9 +355,19 @@ export default function Payment() {
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
                       className="gap-2"
+                      disabled={isCompressing}
                     >
-                      <Camera className="w-4 h-4" />
-                      拍照或選取圖片
+                      {isCompressing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          壓縮中…
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4" />
+                          拍照或選取圖片
+                        </>
+                      )}
                     </Button>
                   </div>
                   {previewUrl && (
@@ -261,7 +380,7 @@ export default function Payment() {
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !selectedId || last5.length !== 5 || !file}
+                  disabled={isSubmitting || isCompressing || !selectedId || last5.length !== 5 || !file}
                   className="w-full gap-2 bg-primary hover:bg-primary/90"
                 >
                   {isSubmitting ? (
