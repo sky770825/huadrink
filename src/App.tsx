@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { authLog } from "@/lib/authDebug";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,7 +23,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const LOADING_FALLBACK_MS = 8000; // 超過此時長顯示「載入逾時」，避免一直轉圈
+const LOADING_FALLBACK_MS = 18_000; // 18 秒：配合 getSession 最長等 15s，留緩衝再顯示「前往登入」
 
 /** 未登入或非管理員時導向登入頁 */
 function RequireAdmin({ children }: { children: React.ReactNode }) {
@@ -31,9 +32,18 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading) return;
-    const t = setTimeout(() => setShowFallback(true), LOADING_FALLBACK_MS);
+    const t = setTimeout(() => {
+      setShowFallback(true);
+      authLog("RequireAdmin: 8s 載入逾時顯示「前往登入」 – 可能原因 6", { LOADING_FALLBACK_MS });
+    }, LOADING_FALLBACK_MS);
     return () => clearTimeout(t);
   }, [isLoading]);
+
+  useEffect(() => {
+    if (!isLoading && (!user || !isAdmin)) {
+      authLog("RequireAdmin: 導向登入頁", { hasUser: !!user, isAdmin, isLoading });
+    }
+  }, [isLoading, user, isAdmin]);
 
   if (isLoading) {
     return (

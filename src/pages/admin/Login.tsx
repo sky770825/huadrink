@@ -217,6 +217,32 @@ export default function AdminLogin() {
                   </>
                 )}
               </Button>
+
+              {/* 僅在網址帶 ?auth_debug=1 時顯示，一般登入頁不顯示 */}
+              {typeof window !== 'undefined' && /[?&]auth_debug=1/.test(window.location.search) && (
+                <div className="mt-6 pt-4 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground mb-2">排查「刷新後自動登出」：</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground hover:text-foreground text-xs"
+                    onClick={() => {
+                      localStorage.setItem('huadrink_auth_debug', 'true');
+                      toast({
+                        title: '已開啟 Auth 診斷',
+                        description: '即將重整頁面，重整後請按 F12 → Console，篩選 [Auth 查看日誌。',
+                      });
+                      setTimeout(() => { window.location.href = '/admin'; }, 800);
+                    }}
+                  >
+                    開啟登入診斷並重整
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    關閉診斷：Console 執行 <code className="rounded bg-muted px-1">localStorage.removeItem('huadrink_auth_debug')</code>
+                  </p>
+                </div>
+              )}
             </form>
           </Form>
         </div>
