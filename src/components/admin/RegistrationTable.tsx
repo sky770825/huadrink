@@ -541,7 +541,7 @@ export function RegistrationTable({
         imageUrl={proofImageUrl ?? (proofRegData ? getPaymentProofUrl(proofRegData) : null)}
         isLoading={!!proofRegIdToFetch && !proofRegData}
         context={proofViewingContext ?? (proofRegData ? { contact_name: proofRegData.contact_name, ref_code: proofRegData.ref_code, pay_proof_last5: proofRegData.pay_proof_last5 ?? undefined } : null)}
-        onRetry={!!proofRegIdToFetch ? () => refetchProof() : undefined}
+        onRetry={proofRegIdToFetch ? () => refetchProof() : undefined}
         registrationId={proofRegistrationId}
         onReplaceSuccess={(newUrl) => {
           if (newUrl) setProofImageUrl(newUrl);

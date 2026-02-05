@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Diamond, ArrowRight, CalendarDays, Clock, Users, Star, MapPin, Car, ExternalLink } from 'lucide-react';
+import { Diamond, ArrowRight, CalendarDays, Clock, Users, Star, MapPin, Car, ExternalLink, UserCheck, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { EVENT_INFO, VENUE_INFO } from '@/lib/constants';
+import { Progress } from '@/components/ui/progress';
+import { EVENT_INFO, EVENT_CAPACITY, VENUE_INFO } from '@/lib/constants';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useRegistrationStats } from '@/hooks/useRegistrations';
 import { formatDeadlineDisplay } from '@/lib/utils';
 
 type CountdownState = {
@@ -26,8 +28,14 @@ function CountdownUnit({ value, label, pad = 0 }: { value: number; label: string
 
 export default function Index() {
   const { data: settings } = useSystemSettings();
+  const stats = useRegistrationStats();
   const deadlineSource = settings?.deadline || EVENT_INFO.deadline;
   const deadlineDisplay = (settings?.deadline ? formatDeadlineDisplay(settings.deadline) : null) ?? EVENT_INFO.deadlineDisplay;
+
+  const totalFilled = stats.totalHeadcount;
+  const remaining = Math.max(0, EVENT_CAPACITY - totalFilled);
+  const externalAndVip = stats.external + stats.vip;
+  const progressPercent = Math.min(100, (totalFilled / EVENT_CAPACITY) * 100);
 
   const [countdown, setCountdown] = useState<CountdownState>({
     days: 0,
@@ -72,73 +80,89 @@ export default function Index() {
 
   return (
     <div className="min-h-screen marble-bg flex flex-col overflow-x-hidden">
-      <main className="container mx-auto flex-1 w-full min-w-0 px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16 space-y-12 lg:space-y-20">
-        {/* Hero Section */}
+      <main className="container mx-auto flex-1 w-full min-w-0 px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16 space-y-10 lg:space-y-16">
+        {/* 首屏一體：標題、時間、按鈕、截止／倒數、邀約進度同一張卡，減少框架感 */}
         <section className="max-w-3xl mx-auto text-center animate-fade-in-up px-2 sm:px-0 min-w-0">
-          {/* Diamond Icon */}
-          <div className="flex justify-center mb-8">
-            <div className="p-4 rounded-full bg-primary/10 backdrop-blur-sm shadow-gold/40">
-              <Diamond className="w-12 h-12 text-primary" strokeWidth={1.5} />
+          <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/5 to-background/95 px-5 py-8 sm:px-10 sm:py-10 shadow-soft">
+            <div className="p-3 rounded-full bg-primary/10 inline-flex mb-6">
+              <Diamond className="w-10 h-10 text-primary" strokeWidth={1.5} />
             </div>
-          </div>
-
-          {/* Title */}
-          <h1 className="font-serif text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground mb-4 leading-tight break-words">
-            {EVENT_INFO.title}
-          </h1>
-
-          {/* Gold Line */}
-          <div className="gold-line max-w-xs mx-auto my-8" />
-
-          {/* Event Details */}
-          <div className="space-y-2 mb-8">
-            <p className="flex items-center justify-center gap-2 text-lg sm:text-xl md:text-2xl text-muted-foreground font-light">
-              <CalendarDays className="w-5 h-5 text-primary/80" />
+            <h1 className="font-serif text-2xl sm:text-4xl md:text-5xl font-semibold text-foreground mb-3 leading-tight break-words">
+              {EVENT_INFO.title}
+            </h1>
+            <div className="gold-line max-w-xs mx-auto my-6" />
+            <p className="flex items-center justify-center gap-2 text-lg sm:text-xl text-muted-foreground font-light">
+              <CalendarDays className="w-5 h-5 text-primary/80 shrink-0" />
               {EVENT_INFO.date}
             </p>
-            <p className="flex items-center justify-center gap-2 text-base sm:text-lg md:text-xl text-muted-foreground font-light">
-              <Clock className="w-5 h-5 text-primary/80" />
+            <p className="flex items-center justify-center gap-2 text-base sm:text-lg text-muted-foreground font-light mt-1">
+              <Clock className="w-5 h-5 text-primary/80 shrink-0" />
               {EVENT_INFO.checkInTime} 入場｜{EVENT_INFO.startTime} 正式開始
             </p>
-          </div>
 
-          {/* CTA Button + Countdown */}
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <Link to="/register">
-              <Button size="lg" className="group gap-2 px-8 py-5 md:py-6 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-gold">
-                立即報名
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-            <Link to="/payment">
-              <Button size="lg" variant="outline" className="gap-2 px-8 py-5 md:py-6 text-base md:text-lg border-primary/40 hover:bg-primary/10">
-                繳費付款
-              </Button>
-            </Link>
-
-            {/* Deadline Notice + Countdown */}
-            <div className="w-full max-w-sm sm:max-w-[460px] mx-auto">
-              <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/5 to-transparent px-5 py-4 shadow-soft">
-                <div className="flex flex-col sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between gap-3">
-                  <div className="text-center sm:text-left sm:shrink-0">
-                    <p className="text-xs uppercase tracking-widest text-primary/80 mb-0.5">報名截止</p>
-                    <p className="font-serif text-xl md:text-2xl font-semibold text-foreground">{deadlineDisplay}</p>
+            {/* 先情境：邀約進度與剩餘名額，再行動：報名／繳費／截止 */}
+            <div className="mt-8 pt-6 border-t border-primary/10">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Users className="w-5 h-5 text-primary" />
+                <h2 className="font-serif text-lg sm:text-xl font-semibold text-foreground">邀約進度</h2>
+              </div>
+              <p className="text-center text-xs sm:text-sm text-muted-foreground mb-4">內外部成員與剩餘名額即時更新</p>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+                <div className="rounded-lg bg-background/70 border border-primary/10 px-3 py-2.5 sm:px-4 sm:py-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-primary/90 mb-0.5">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider">內部夥伴</span>
                   </div>
-                  {countdown.isExpired ? (
-                    <div className="flex justify-center sm:justify-end">
-                      <span className="inline-flex items-center px-4 py-2 rounded-lg bg-destructive/10 text-destructive font-semibold text-sm">
-                        報名已截止
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap sm:flex-nowrap justify-center sm:justify-end gap-2">
-                      <CountdownUnit value={countdown.days} label="天" />
-                      <CountdownUnit value={countdown.hours} label="時" pad={2} />
-                      <CountdownUnit value={countdown.minutes} label="分" pad={2} />
-                      <CountdownUnit value={countdown.seconds} label="秒" pad={2} />
-                    </div>
-                  )}
+                  <p className="font-serif text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{stats.internal}</p>
+                  <p className="text-[10px] text-muted-foreground">人</p>
                 </div>
+                <div className="rounded-lg bg-background/70 border border-primary/10 px-3 py-2.5 sm:px-4 sm:py-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-primary/90 mb-0.5">
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider">外部／來賓</span>
+                  </div>
+                  <p className="font-serif text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{externalAndVip}</p>
+                  <p className="text-[10px] text-muted-foreground">人</p>
+                </div>
+              </div>
+              <div className="mb-4">
+                <div className="flex justify-between text-xs sm:text-sm mb-1.5">
+                  <span className="text-muted-foreground">已報名</span>
+                  <span className="font-semibold tabular-nums text-foreground">{totalFilled} / {EVENT_CAPACITY} 人</span>
+                </div>
+                <Progress value={progressPercent} className="h-2.5 transition-all duration-700 ease-out" />
+              </div>
+              <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-center">
+                <p className="text-[10px] uppercase tracking-widest text-primary/90 mb-0.5">剩餘名額</p>
+                <p className="font-serif text-3xl sm:text-4xl font-bold tabular-nums text-primary">{remaining} <span className="text-sm font-normal text-muted-foreground">人</span></p>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-primary/10 flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-4">
+              <Link to="/register">
+                <Button size="lg" className="group gap-2 px-8 py-5 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-gold">
+                  立即報名
+                  <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+              <Link to="/payment">
+                <Button size="lg" variant="outline" className="gap-2 px-8 py-5 text-base md:text-lg border-primary/40 hover:bg-primary/10">
+                  繳費付款
+                </Button>
+              </Link>
+              <div className="flex items-center gap-3 sm:gap-4 text-sm sm:text-base">
+                <span className="text-muted-foreground whitespace-nowrap">報名截止</span>
+                <span className="font-serif font-semibold text-foreground">{deadlineDisplay}</span>
+                {countdown.isExpired ? (
+                  <span className="inline-flex px-3 py-1 rounded-lg bg-destructive/10 text-destructive font-medium text-sm">已截止</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 tabular-nums font-medium text-foreground">
+                    <CountdownUnit value={countdown.days} label="天" />
+                    <CountdownUnit value={countdown.hours} label="時" pad={2} />
+                    <CountdownUnit value={countdown.minutes} label="分" pad={2} />
+                    <CountdownUnit value={countdown.seconds} label="秒" pad={2} />
+                  </span>
+                )}
               </div>
             </div>
           </div>

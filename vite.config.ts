@@ -10,7 +10,7 @@ export default defineConfig(() => ({
   },
   server: {
     host: "::",
-    port: 8888,
+    port: 8895,
     hmr: {
       overlay: false,
     },

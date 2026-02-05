@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchRegistrations } from '@/hooks/useRegistrations';
+import { prefetchInternalMembers } from '@/hooks/useMembers';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -72,7 +73,7 @@ export default function AdminLogin() {
 
       const timeoutResult = { data: null, error: { message: '逾時' } };
       const timeoutPromise = new Promise<typeof timeoutResult>((resolve) => {
-        setTimeout(() => resolve(timeoutResult), 12_000);
+        setTimeout(() => resolve(timeoutResult), 10_000); // 10 秒逾時，避免慢網路久等
       });
 
       const { data: adminData, error: adminError } = await Promise.race([
@@ -89,17 +90,24 @@ export default function AdminLogin() {
 
       toast({
         title: '登入成功',
-        description: '歡迎回來',
+        description: '正在載入後台資料…',
       });
 
-      void prefetchRegistrations(queryClient);
+      // 並行預載報名＋內部成員，等完成後再進後台，避免進入後台才開始載入變慢
+      const promises = [prefetchRegistrations(queryClient)];
+      const memPromise = prefetchInternalMembers(queryClient);
+      if (memPromise) promises.push(memPromise);
+      const timeout = new Promise((resolve) => setTimeout(resolve, 6_000)); // 最多等 6 秒即進後台
+      await Promise.race([Promise.all(promises), timeout]);
+
+      toast({ title: '登入成功', description: '歡迎回來' });
       navigate('/admin');
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       const isAbort = error != null && typeof error === 'object' && ((error as { name?: string }).name === 'AbortError' || /abort|signal is aborted/i.test(msg));
       if (isAbort) {
         toast({ title: '連線被中斷', description: '請再試一次', variant: 'destructive' });
-        try { await supabase.auth.signOut(); } catch {}
+        try { await supabase.auth.signOut(); } catch { /* ignore */ }
       } else {
         console.error('[Login]', error);
         const isInvalidCreds = /invalid|credentials|wrong|錯誤/i.test(msg);

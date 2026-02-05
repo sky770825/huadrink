@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Payment from "./pages/Payment";
@@ -22,13 +22,35 @@ const queryClient = new QueryClient({
   },
 });
 
+const LOADING_FALLBACK_MS = 8000; // 超過此時長顯示「載入逾時」，避免一直轉圈
+
 /** 未登入或非管理員時導向登入頁 */
 function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, isLoading } = useAuth();
+  const [showFallback, setShowFallback] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) return;
+    const t = setTimeout(() => setShowFallback(true), LOADING_FALLBACK_MS);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
   if (isLoading) {
     return (
-      <div className="min-h-screen marble-bg flex items-center justify-center">
+      <div className="min-h-screen marble-bg flex flex-col items-center justify-center gap-4 px-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">正在驗證登入狀態…</p>
+        {showFallback && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-amber-700 dark:text-amber-400 mb-2">載入逾時，請重新整理或前往登入頁</p>
+            <Link
+              to="/admin/login"
+              className="text-sm font-medium text-primary underline hover:no-underline"
+            >
+              前往登入
+            </Link>
+          </div>
+        )}
       </div>
     );
   }

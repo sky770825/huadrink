@@ -232,6 +232,11 @@
     opacity: 0;
   }
 
+  /* 剩餘名額輕微脈動，吸引注意 */
+  .animate-pulse-slow {
+    animation: pulseSlow 2.5s ease-in-out infinite;
+  }
+
   /* Hero specific */
   .hero-gradient {
     background: 
@@ -279,5 +284,14 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
   }
 }

@@ -14,7 +14,7 @@ function getAuthStorage(): Storage {
     if (typeof window !== 'undefined' && window.localStorage?.getItem(REMEMBER_KEY) === 'false') {
       return window.sessionStorage;
     }
-  } catch {}
+  } catch { /* ignore */ }
   return typeof window !== 'undefined' ? window.localStorage : ({} as Storage);
 }
 

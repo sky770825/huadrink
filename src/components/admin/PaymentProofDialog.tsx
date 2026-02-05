@@ -168,9 +168,9 @@ export function PaymentProofDialog({
             <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">請確認：此憑證是否對應以下報名者？</p>
             <p className="text-muted-foreground">
               聯絡人：<span className="font-medium text-foreground">{context.contact_name}</span>
-              {'　'}報名編號：<span className="font-mono font-medium">{context.ref_code}</span>
+              {' '}報名編號：<span className="font-mono font-medium">{context.ref_code}</span>
               {context.pay_proof_last5 && (
-                <>　末五碼：<span className="font-mono font-medium">{context.pay_proof_last5}</span></>
+                <> 末五碼：<span className="font-mono font-medium">{context.pay_proof_last5}</span></>
               )}
             </p>
           </div>

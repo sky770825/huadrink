@@ -1,11 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type QueryClient } from '@tanstack/react-query';
 import { huadrink } from '@/lib/supabase-huadrink';
 import { MEMBERS, MEMBERS_SOURCE } from '@/lib/members';
 import type { Member } from '@/lib/members';
 
 const MEMBERS_QUERY_KEY = ['internal-members']; // 與 useInternalMembers 共用，後台新增/刪除後會一併更新
 
-async function fetchMembersFromDb(): Promise<Member[]> {
+export async function fetchMembersFromDb(): Promise<Member[]> {
   const { data, error } = await huadrink
     .from('internal_members' as 'registrations')
     .select('id, name, specialty, phone')
@@ -44,4 +44,14 @@ export function useMembers(): { members: Member[]; isLoading: boolean } {
     members,
     isLoading: fromDb.isLoading,
   };
+}
+
+/** 登入後台前可呼叫，預先載入內部成員名單（database 模式時），與 prefetchRegistrations 並行以加速首屏 */
+export function prefetchInternalMembers(queryClient: QueryClient): Promise<void> | void {
+  if (MEMBERS_SOURCE !== 'database') return;
+  return queryClient.prefetchQuery({
+    queryKey: MEMBERS_QUERY_KEY,
+    queryFn: fetchMembersFromDb,
+    staleTime: 60 * 1000,
+  });
 }

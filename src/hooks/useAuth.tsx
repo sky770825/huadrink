@@ -23,7 +23,7 @@ function getCachedAdminUserId(): string | null {
 export function setAdminVerifiedCache(userId: string) {
   try {
     sessionStorage.setItem(ADMIN_VERIFIED_CACHE_KEY, JSON.stringify({ userId, at: Date.now() }));
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 interface AuthState {
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           const cached = getCachedAdminUserId();
           if (cached === session.user.id) {
-            try { sessionStorage.removeItem(ADMIN_VERIFIED_CACHE_KEY); } catch {}
+            try { sessionStorage.removeItem(ADMIN_VERIFIED_CACHE_KEY); } catch { /* ignore */ }
             if (!cancelled) {
               setIsAdmin(true);
               setLoadingFalse();
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (cached === uid) {
         try {
           sessionStorage.removeItem(ADMIN_VERIFIED_CACHE_KEY);
-        } catch {}
+        } catch { /* ignore */ }
         if (!cancelled) {
           setIsAdmin(true);
           setIsLoading(false);
@@ -133,9 +133,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tryAdmins();
     };
 
+    const SESSION_WAIT_MS = 5000; // getSession 逾時，避免重整後卡住
     const tryGetSession = (retry = false) => {
-      supabase.auth
-        .getSession()
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+        setTimeout(() => resolve({ data: { session: null } }), SESSION_WAIT_MS)
+      );
+      Promise.race([sessionPromise, timeoutPromise])
         .then(({ data: { session } }) => {
           if (cancelled) return;
           setUser(session?.user ?? null);
@@ -158,11 +162,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     tryGetSession();
 
-    const timeoutId = setTimeout(setLoadingFalse, 6000); // 6 秒後強制結束載入，避免重整後卡住
+    const timeoutId = setTimeout(setLoadingFalse, 5000); // 5 秒後強制結束載入，避免重整後卡住
 
-    /** 分頁回到前景時主動 refresh token，避免背景節流導致過期 */
+    /** 分頁回到前景時 refresh token，節流 30 秒內只執行一次，減少多分頁切換時的請求 */
+    const VISIBILITY_REFRESH_THROTTLE_MS = 30_000;
+    let lastVisibilityRefresh = 0;
     const handleVisibilityChange = () => {
       if (cancelled || document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastVisibilityRefresh < VISIBILITY_REFRESH_THROTTLE_MS) return;
+      lastVisibilityRefresh = now;
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (cancelled || !session?.user) return;
         supabase.auth.refreshSession().catch(() => {
@@ -183,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       sessionStorage.removeItem(ADMIN_VERIFIED_CACHE_KEY);
-    } catch {}
+    } catch { /* ignore */ }
     await supabase.auth.signOut();
     navigate('/admin/login');
   };

@@ -33,6 +33,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
   const [seatZone, setSeatZone] = useState<SeatZone | ''>('');
   const [tableNo, setTableNo] = useState<string>('');
   const [adminNote, setAdminNote] = useState<string>('');
+  const [inviter, setInviter] = useState<string>('');
 
   // Initialize form when registration loads
   if (registration && payStatus === '') {
@@ -40,6 +41,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
     setSeatZone(registration.seat_zone || '');
     setTableNo(registration.table_no?.toString() || '');
     setAdminNote(registration.admin_note || '');
+    setInviter(registration.type === 'external' || registration.type === 'vip' ? (registration.inviter || '') : '');
   }
 
   const handleSave = async () => {
@@ -53,6 +55,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
           seat_zone: seatZone as SeatZone || null,
           table_no: tableNo ? parseInt(tableNo) : null,
           admin_note: adminNote || null,
+          inviter: (registration?.type === 'external' || registration?.type === 'vip') ? (inviter?.trim() || null) : undefined,
         },
       });
 
@@ -77,6 +80,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
     setSeatZone('');
     setTableNo('');
     setAdminNote('');
+    setInviter('');
     onClose();
   };
 
@@ -137,7 +141,19 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
               {(registration.type === 'external' || registration.type === 'vip') && (
                 <div>
                   <Label className="text-muted-foreground">來賓來源</Label>
-                  <p className="font-medium">{registration.inviter || '-'}</p>
+                  <Select value={inviter || '__none__'} onValueChange={(v) => setInviter(v === '__none__' ? '' : v)}>
+                    <SelectTrigger className="input-luxury mt-1">
+                      <SelectValue placeholder="選擇內部成員" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">未填／無</SelectItem>
+                      {members.map((m) => (
+                        <SelectItem key={m.id} value={m.name}>
+                          {m.id}. {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>
@@ -263,6 +279,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
                                 seat_zone: seatZone as SeatZone || null,
                                 table_no: tableNo ? parseInt(tableNo) : null,
                                 admin_note: adminNote || null,
+                                inviter: (registration?.type === 'external' || registration?.type === 'vip') ? (inviter?.trim() || null) : undefined,
                               },
                             });
                             setPayStatus('paid');

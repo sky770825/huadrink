@@ -7,6 +7,9 @@ export const EVENT_INFO = {
   deadlineDisplay: '2/7（週六，含）',
 };
 
+/** 活動總人數上限（用於首頁邀約進度與剩餘名額） */
+export const EVENT_CAPACITY = 90;
+
 /** 活動場地與交通資訊 */
 export const VENUE_INFO = {
   name: '晶宴‧日光香頌',

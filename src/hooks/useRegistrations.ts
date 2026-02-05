@@ -22,47 +22,53 @@ function parseAttendeeList(data: Json | null): Attendee[] {
 const LIST_SELECT = 'id, ref_code, type, headcount, attendee_list, company, title, contact_name, phone, email, line_id, diet, diet_other, allergy_note, photo_consent, inviter, vip_note, invoice_needed, invoice_title, invoice_tax_id, pay_method, pay_status, pay_proof_url, pay_proof_last5, status, seat_zone, table_no, admin_note, created_at, updated_at';
 const DETAIL_SELECT = LIST_SELECT; // 詳情同列表，不載入 base64
 
-const REGISTRATIONS_QUERY_TIMEOUT_MS = 20_000; // 20 秒，避免重整後請求卡住一直載入
+const REGISTRATIONS_QUERY_TIMEOUT_MS = 15_000; // 15 秒逾時，失敗時較快顯示錯誤與重試
 
+/** 將 Supabase 回傳的單筆 row 轉成 Registration（列表用，不含 pay_proof_base64） */
+function mapRowToRegistration(row: Record<string, unknown>): Registration {
+  return {
+    id: row.id as string,
+    ref_code: row.ref_code as string,
+    type: row.type as Registration['type'],
+    headcount: row.headcount as number,
+    attendee_list: parseAttendeeList(row.attendee_list as Json | null),
+    company: (row.company as string) ?? undefined,
+    title: (row.title as string) ?? undefined,
+    contact_name: (row.contact_name as string) ?? '',
+    phone: (row.phone as string) ?? undefined,
+    email: (row.email as string) ?? undefined,
+    line_id: (row.line_id as string) ?? undefined,
+    diet: (row.diet as Registration['diet']) ?? undefined,
+    diet_other: (row.diet_other as string) ?? undefined,
+    allergy_note: (row.allergy_note as string) ?? undefined,
+    photo_consent: row.photo_consent as boolean | undefined,
+    inviter: (row.inviter as string) ?? undefined,
+    vip_note: (row.vip_note as string) ?? undefined,
+    invoice_needed: row.invoice_needed as boolean | undefined,
+    invoice_title: (row.invoice_title as string) ?? undefined,
+    invoice_tax_id: (row.invoice_tax_id as string) ?? undefined,
+    pay_method: (row.pay_method as Registration['pay_method']) ?? undefined,
+    pay_status: (row.pay_status as Registration['pay_status']) ?? 'unpaid',
+    pay_proof_url: (row.pay_proof_url as string) ?? undefined,
+    pay_proof_base64: undefined,
+    pay_proof_last5: (row.pay_proof_last5 as string) ?? undefined,
+    status: (row.status as Registration['status']) ?? 'confirmed',
+    seat_zone: (row.seat_zone as Registration['seat_zone']) ?? undefined,
+    table_no: (row.table_no as number) ?? undefined,
+    admin_note: (row.admin_note as string) ?? undefined,
+    created_at: row.created_at as string,
+    updated_at: row.updated_at as string,
+  };
+}
+
+/** 全表 select + order by created_at；DB 已有 created_at 索引，排序由索引支援 */
 async function fetchRegistrationsInner(): Promise<Registration[]> {
   const { data, error } = await huadrink
     .from('registrations')
     .select(LIST_SELECT)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data || []).map((row) => ({
-    id: row.id,
-    ref_code: row.ref_code,
-    type: row.type as Registration['type'],
-    headcount: row.headcount,
-    attendee_list: parseAttendeeList(row.attendee_list),
-    company: row.company,
-    title: row.title,
-    contact_name: row.contact_name,
-    phone: row.phone,
-    email: row.email,
-    line_id: row.line_id,
-    diet: row.diet as Registration['diet'],
-    diet_other: row.diet_other,
-    allergy_note: row.allergy_note,
-    photo_consent: row.photo_consent,
-    inviter: row.inviter,
-    vip_note: row.vip_note,
-    invoice_needed: row.invoice_needed,
-    invoice_title: row.invoice_title,
-    invoice_tax_id: row.invoice_tax_id,
-    pay_method: row.pay_method as Registration['pay_method'],
-    pay_status: row.pay_status as Registration['pay_status'],
-    pay_proof_url: row.pay_proof_url,
-    pay_proof_base64: undefined,
-    pay_proof_last5: row.pay_proof_last5 ?? undefined,
-    status: row.status as Registration['status'],
-    seat_zone: row.seat_zone as Registration['seat_zone'],
-    table_no: row.table_no,
-    admin_note: row.admin_note,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  }));
+  return (data || []).map((row) => mapRowToRegistration(row as Record<string, unknown>));
 }
 
 function fetchRegistrations(signal?: AbortSignal): Promise<Registration[]> {
@@ -92,15 +98,15 @@ export function useRegistrations() {
   return useQuery({
     queryKey: ['registrations'],
     queryFn: ({ signal }) => fetchRegistrations(signal),
-    staleTime: 10 * 1000, // 10 秒內不重複請求
-    retry: 2,
+    staleTime: 15 * 1000, // 15 秒內視為新鮮，減少重複請求
+    retry: 1, // 僅重試 1 次，失敗時更快顯示錯誤讓使用者手動重試
     retryDelay: (i) => Math.min(1000 * 2 ** i, 5000),
   });
 }
 
-const PAYMENT_QUERY_TIMEOUT_MS = 20_000; // 20 秒，避免重整後卡在載入；逾時會顯示錯誤與重試
+const PAYMENT_QUERY_TIMEOUT_MS = 15_000; // 15 秒逾時，失敗時較快顯示錯誤與重試
 
-/** 繳費付款頁專用：依身份查「內部」或「外部」＋未付款的 id / ref_code / contact_name */
+/** 繳費名單：依 type + pay_status 條件查詢；DB 已有對應複合索引 */
 export function usePaymentEligibleRegistrations(memberType: 'internal' | 'external', options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   return useQuery({
@@ -138,7 +144,7 @@ export function usePaymentEligibleRegistrations(memberType: 'internal' | 'extern
       }
     },
     staleTime: 5 * 60 * 1000, // 5 分鐘內不重取
-    retry: 2,
+    retry: 1,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 }
@@ -211,6 +217,8 @@ interface UpdateRegistrationParams {
     seat_zone?: 'vip' | 'general' | 'internal' | null;
     table_no?: number | null;
     admin_note?: string | null;
+    /** 來賓來源（外部／VIP 可選內部成員） */
+    inviter?: string | null;
     /** 清除付款憑證時設為 null */
     pay_proof_url?: string | null;
     pay_proof_base64?: string | null;
@@ -222,18 +230,26 @@ export function useUpdateRegistration() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, updates }: UpdateRegistrationParams) => {
-      const { error } = await huadrink
+    mutationFn: async ({ id, updates }: UpdateRegistrationParams): Promise<Registration> => {
+      const { data, error } = await huadrink
         .from('registrations')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .select(LIST_SELECT)
+        .single();
 
       if (error) throw error;
+      return mapRowToRegistration((data ?? {}) as Record<string, unknown>);
     },
-    onSuccess: (_data, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ['registrations'] });
-      queryClient.invalidateQueries({ queryKey: ['registrations', 'payment-eligible'] });
+    onSuccess: (updated, { id }) => {
+      // 列表用 setQueryData 就地更新，不 refetch，改動頻繁時可減少請求
+      queryClient.setQueryData<Registration[]>(['registrations'], (prev) => {
+        if (!prev) return prev;
+        return prev.map((r) => (r.id === id ? updated : r));
+      });
+      // 僅詳情與繳費名單 invalidate，以取得最新資料
       queryClient.invalidateQueries({ queryKey: ['registration', id] });
+      queryClient.invalidateQueries({ queryKey: ['registrations', 'payment-eligible'] });
     },
   });
 }
