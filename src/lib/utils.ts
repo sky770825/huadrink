@@ -23,3 +23,10 @@ export function getPaymentProofUrl(reg: { pay_proof_url?: string; pay_proof_base
   if (reg.pay_proof_base64) return `data:image/jpeg;base64,${reg.pay_proof_base64}`;
   return null;
 }
+
+/** 從 pay_proof_url 解析出 Storage 物件路徑（供刪除用）。若非 payment-proofs 的 URL 則回傳 null。 */
+export function getPaymentProofStoragePath(payProofUrl: string | null | undefined): string | null {
+  if (!payProofUrl || !payProofUrl.includes('payment-proofs/')) return null;
+  const match = payProofUrl.match(/payment-proofs\/(.+?)(?:\?|$)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}

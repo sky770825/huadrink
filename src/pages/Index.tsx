@@ -112,7 +112,7 @@ export default function Index() {
             </Link>
             <Link to="/payment">
               <Button size="lg" variant="outline" className="gap-2 px-8 py-5 md:py-6 text-base md:text-lg border-primary/40 hover:bg-primary/10">
-                內部付款
+                繳費付款
               </Button>
             </Link>
 

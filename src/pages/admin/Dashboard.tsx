@@ -28,7 +28,7 @@ import {
 
 export default function AdminDashboard() {
   const { signOut } = useAuth();
-  const { data: registrations, isLoading } = useRegistrations();
+  const { data: registrations, isLoading, isError, refetch } = useRegistrations();
   const stats = useRegistrationStats();
   const [selectedRegistrationId, setSelectedRegistrationId] = useState<string | null>(null);
   const [showUnregisteredModal, setShowUnregisteredModal] = useState(false);
@@ -79,6 +79,14 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container mx-auto flex-1 w-full min-w-0 px-3 sm:px-4 py-6 sm:py-8">
+        {isError && (
+          <div className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-sm text-amber-800 dark:text-amber-200">載入報名名單失敗（逾時或網路問題），請重試。</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="shrink-0">
+              重試
+            </Button>
+          </div>
+        )}
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4 mb-6">
           <StatsCard

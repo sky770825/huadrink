@@ -98,6 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return;
       }
+      const ADMIN_CHECK_TIMEOUT_MS = 8000; // 單次 admins 查詢逾時，避免卡住
+      const resolveTimeout = setTimeout(() => {
+        if (!cancelled) {
+          setIsAdmin(false);
+          setIsLoading(false);
+        }
+      }, ADMIN_CHECK_TIMEOUT_MS);
       const tryAdmins = (retry = false) => {
         supabase
           .schema('huadrink')
@@ -106,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('user_id', uid)
           .maybeSingle()
           .then(({ data: adminData }) => {
+            clearTimeout(resolveTimeout);
             if (!cancelled) {
               setIsAdmin(!!adminData);
               setIsLoading(false);
@@ -113,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })
           .catch(() => {
             if (cancelled) return;
+            clearTimeout(resolveTimeout);
             if (retry) {
               setIsAdmin(false);
               setIsLoading(false);
@@ -149,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     tryGetSession();
 
-    const timeoutId = setTimeout(setLoadingFalse, 10000);
+    const timeoutId = setTimeout(setLoadingFalse, 6000); // 6 秒後強制結束載入，避免重整後卡住
 
     /** 分頁回到前景時主動 refresh token，避免背景節流導致過期 */
     const handleVisibilityChange = () => {

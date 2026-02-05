@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,9 +7,11 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2 } from 'lucide-react';
-import { useRegistration } from '@/hooks/useRegistrations';
+import { Eye, Loader2, Upload } from 'lucide-react';
+import { useRegistration, useUpdateRegistration } from '@/hooks/useRegistrations';
 import { getPaymentProofUrl } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 /** 顯示於憑證旁，供審核時核對是否為正確報名者 */
 export interface PaymentProofContext {
@@ -27,6 +29,10 @@ interface PaymentProofDialogProps {
   context?: PaymentProofContext | null;
   /** 載入逾時時可呼叫重試 */
   onRetry?: () => void;
+  /** 該筆報名 id，有值時顯示「上傳／更換憑證」按鈕 */
+  registrationId?: string | null;
+  /** 更換憑證成功後回調（可傳新 URL 讓父層更新顯示，或僅觸發 refetch） */
+  onReplaceSuccess?: (newUrl?: string) => void;
 }
 
 /** 點擊可開啟付款憑證的按鈕（用於 RegistrationDetailModal） */
@@ -41,12 +47,12 @@ export function PaymentProofButton({
   context?: PaymentProofContext;
 }) {
   const [open, setOpen] = useState(false);
-  const needFetch = !imageUrl && !!registrationId && open;
+  const needFetch = !!registrationId && open;
   const { data: regWithProof, isLoading, refetch } = useRegistration(registrationId || '', {
     includePayProofBase64: true,
     enabled: needFetch,
   });
-  const resolvedUrl = imageUrl ?? (regWithProof ? getPaymentProofUrl(regWithProof) : null);
+  const resolvedUrl = (regWithProof ? getPaymentProofUrl(regWithProof) : null) ?? imageUrl;
   return (
     <>
       <Button
@@ -65,15 +71,34 @@ export function PaymentProofButton({
         isLoading={needFetch && isLoading}
         context={context}
         onRetry={needFetch ? () => refetch() : undefined}
+        registrationId={registrationId}
+        onReplaceSuccess={() => refetch()}
       />
     </>
   );
 }
 
 const LOADING_TIMEOUT_MS = 25000; // 25 秒後顯示逾時提示
+const MAX_REPLACE_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
-export function PaymentProofDialog({ open, onOpenChange, imageUrl, isLoading, context, onRetry }: PaymentProofDialogProps) {
+export function PaymentProofDialog({
+  open,
+  onOpenChange,
+  imageUrl,
+  isLoading,
+  context,
+  onRetry,
+  registrationId,
+  onReplaceSuccess,
+}: PaymentProofDialogProps) {
   const [loadingTooLong, setLoadingTooLong] = useState(false);
+  const [isReplacing, setIsReplacing] = useState(false);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null); // 更換後立即顯示新圖
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const updateRegistration = useUpdateRegistration();
+  const { toast } = useToast();
+
+  const currentImageUrl = displayUrl ?? imageUrl;
 
   useEffect(() => {
     if (!isLoading) {
@@ -83,6 +108,53 @@ export function PaymentProofDialog({ open, onOpenChange, imageUrl, isLoading, co
     const t = setTimeout(() => setLoadingTooLong(true), LOADING_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [isLoading]);
+
+  useEffect(() => {
+    if (!open) setDisplayUrl(null);
+    else setDisplayUrl(null);
+  }, [open]);
+
+  const handleReplaceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !registrationId) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: '請選擇圖片檔（JPG、PNG 等）', variant: 'destructive' });
+      return;
+    }
+    if (file.size > MAX_REPLACE_FILE_BYTES) {
+      toast({ title: '檔案請在 10MB 以內', variant: 'destructive' });
+      return;
+    }
+    setIsReplacing(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
+      const path = `${registrationId}/proof.${safeExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('payment-proofs')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(uploadData.path);
+      const newUrl = urlData.publicUrl;
+      await updateRegistration.mutateAsync({
+        id: registrationId,
+        updates: { pay_proof_url: newUrl, pay_proof_base64: null },
+      });
+      setDisplayUrl(newUrl);
+      onReplaceSuccess?.(newUrl);
+      toast({ title: '已更換憑證圖片', duration: 3000 });
+    } catch (err) {
+      console.error('Replace proof error:', err);
+      toast({
+        title: '更換失敗',
+        description: err instanceof Error ? err.message : '請稍後再試',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsReplacing(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,6 +175,32 @@ export function PaymentProofDialog({ open, onOpenChange, imageUrl, isLoading, co
             </p>
           </div>
         )}
+        {registrationId && !isLoading && (
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleReplaceFile}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={isReplacing}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {isReplacing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              上傳／更換憑證
+            </Button>
+          </div>
+        )}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -118,10 +216,10 @@ export function PaymentProofDialog({ open, onOpenChange, imageUrl, isLoading, co
               </div>
             )}
           </div>
-        ) : imageUrl ? (
+        ) : currentImageUrl ? (
           <div className="flex justify-center">
             <img
-              src={imageUrl}
+              src={currentImageUrl}
               alt="付款憑證"
               className="max-w-full max-h-[70vh] object-contain rounded-lg border"
             />

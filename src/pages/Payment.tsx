@@ -16,9 +16,15 @@ import { sortByMemberId } from '@/lib/registrations';
 import { Copy, Loader2, Upload, ArrowLeft, Camera } from 'lucide-react';
 import type { Registration } from '@/types/registration';
 
+type PaymentMemberType = 'internal' | 'external';
+
 export default function Payment() {
   const queryClient = useQueryClient();
-  const { data: paymentEligible = [], isLoading: regLoading, isError: regError, refetch: refetchReg } = usePaymentEligibleRegistrations();
+  const [memberType, setMemberType] = useState<PaymentMemberType | null>(null);
+  const { data: paymentEligible = [], isLoading: regLoading, isError: regError, refetch: refetchReg } = usePaymentEligibleRegistrations(
+    memberType ?? 'internal',
+    { enabled: memberType !== null }
+  );
   const { data: settings, isLoading: settingsLoading, isError: settingsError } = useSystemSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +45,21 @@ export default function Payment() {
     const t = setTimeout(() => setLoadingTooLong(true), 25000); // 25 秒後顯示重試提示
     return () => clearTimeout(t);
   }, [regLoading]);
+
+  /** 切換報名者時清掉已選圖片，避免同一張圖被套用到多筆報名（造成後台看到重複憑證） */
+  useEffect(() => {
+    setFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [selectedId]);
+
+  /** 切換身份（內部/外部）時清掉已選報名者 */
+  useEffect(() => {
+    setSelectedId('');
+  }, [memberType]);
 
   const eligible = sortByMemberId(paymentEligible);
 
@@ -262,8 +283,45 @@ export default function Payment() {
           </div>
 
           <FormCard className="animate-fade-in-up">
-            <h2 className="font-serif text-xl md:text-2xl font-semibold mb-6">內部夥伴付款</h2>
+            <h2 className="font-serif text-xl md:text-2xl font-semibold mb-2">繳費付款</h2>
+            {memberType !== null && (
+              <p className="text-sm text-muted-foreground mb-6">
+                {memberType === 'internal' ? '內部成員' : '外部成員'}
+                <button
+                  type="button"
+                  onClick={() => setMemberType(null)}
+                  className="ml-2 text-primary hover:underline"
+                >
+                  改選身份
+                </button>
+              </p>
+            )}
 
+            {memberType === null ? (
+              /* 第一步：選擇身份 */
+              <div className="space-y-6">
+                <p className="text-muted-foreground">請選擇您的身份，再選擇報名資料並上傳付款憑證。</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setMemberType('internal')}
+                    className="rounded-xl border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 p-6 text-left transition-colors"
+                  >
+                    <span className="font-semibold text-lg block mb-1">內部成員</span>
+                    <span className="text-sm text-muted-foreground">分會夥伴繳費</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMemberType('external')}
+                    className="rounded-xl border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 p-6 text-left transition-colors"
+                  >
+                    <span className="font-semibold text-lg block mb-1">外部成員</span>
+                    <span className="text-sm text-muted-foreground">外部來賓繳費</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
             {/* 匯款帳號區塊：立即顯示（有 fallback），不等設定載入 */}
             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mb-6">
               <Label className="text-muted-foreground">匯款帳號</Label>
@@ -281,8 +339,8 @@ export default function Payment() {
             {hasFatalError ? (
               <div className="py-6 text-center space-y-3">
                 <p className="text-muted-foreground">無法載入報名名單，請檢查網路後重試。</p>
-                <Button variant="outline" onClick={() => window.location.reload()}>
-                  重新載入
+                <Button variant="outline" onClick={() => refetchReg()}>
+                  重試
                 </Button>
               </div>
             ) : regLoading ? (
@@ -300,7 +358,10 @@ export default function Payment() {
               </div>
             ) : eligible.length === 0 ? (
               <p className="text-muted-foreground py-8">
-                目前沒有待付款的內部報名，或您已完成付款審核提交。若有疑問請聯繫主辦單位。
+                {memberType === 'internal'
+                  ? '目前沒有待付款的內部報名，或您已完成付款審核提交。'
+                  : '目前沒有待付款的外部報名，或您已完成付款審核提交。'}
+                若有疑問請聯繫主辦單位。
               </p>
             ) : (
               <form onSubmit={onSubmit} className="space-y-6">
@@ -313,10 +374,15 @@ export default function Payment() {
                     </SelectTrigger>
                     <SelectContent>
                       {eligible.map((r) => {
-                        const member = getMemberByContactName(r.contact_name);
-                        const label = member
-                          ? `${member.id}. ${r.contact_name}（${r.ref_code}）`
-                          : `${r.contact_name}（${r.ref_code}）`;
+                        const label =
+                          memberType === 'internal'
+                            ? (() => {
+                                const member = getMemberByContactName(r.contact_name);
+                                return member
+                                  ? `${member.id}. ${r.contact_name}（${r.ref_code}）`
+                                  : `${r.contact_name}（${r.ref_code}）`;
+                              })()
+                            : `${r.contact_name}（${r.ref_code}）`;
                         return (
                           <SelectItem key={r.id} value={r.id}>
                             {label}
@@ -396,6 +462,8 @@ export default function Payment() {
                   )}
                 </Button>
               </form>
+            )}
+              </>
             )}
           </FormCard>
         </div>

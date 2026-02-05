@@ -18,7 +18,8 @@ import { REGISTRATION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/constants
 import { getMemberByContactName } from '@/lib/members';
 import { getDuplicateGroupIds, sortByMemberId } from '@/lib/registrations';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Trash2, Copy, Wallet, Loader2 } from 'lucide-react';
-import { getPaymentProofUrl } from '@/lib/utils';
+import { getPaymentProofUrl, getPaymentProofStoragePath } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofDialog, type PaymentProofContext } from '@/components/admin/PaymentProofDialog';
 import type { Registration } from '@/types/registration';
 import { format } from 'date-fns';
@@ -71,6 +72,8 @@ export function RegistrationTable({
   const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
   /** 需 fetch 才能取得 base64 的報名 id，列表不載入 base64 以加速 */
   const [proofRegIdToFetch, setProofRegIdToFetch] = useState<string | null>(null);
+  /** 目前查看憑證的報名 id（供「上傳／更換憑證」使用） */
+  const [proofRegistrationId, setProofRegistrationId] = useState<string | null>(null);
   /** 憑證對應的報名者資訊，供審核時核對 */
   const [proofViewingContext, setProofViewingContext] = useState<PaymentProofContext | null>(null);
   const { data: proofRegData, refetch: refetchProof } = useRegistration(proofRegIdToFetch || '', { includePayProofBase64: true });
@@ -197,9 +200,23 @@ export function RegistrationTable({
     }
   };
 
-  const handleConfirmPaidToUnpaid = () => {
+  const handleConfirmPaidToUnpaid = async () => {
     if (!pendingUnpaidReg) return;
-    const { id } = pendingUnpaidReg;
+    const { id, pay_proof_url } = pendingUnpaidReg;
+    const path = getPaymentProofStoragePath(pay_proof_url ?? undefined);
+    if (path) {
+      try {
+        await supabase.storage.from('payment-proofs').remove([path]);
+      } catch (err) {
+        console.warn('刪除 Storage 憑證檔案失敗（仍會清除資料庫）:', err);
+        toast({
+          title: '已更新狀態',
+          description: '資料庫已清除憑證，但 Storage 檔案刪除時發生錯誤，可稍後於 Supabase 手動清理。',
+          variant: 'destructive',
+          duration: 5000,
+        });
+      }
+    }
     void doUpdatePayStatus(id, 'unpaid', {
       pay_proof_url: null,
       pay_proof_base64: null,
@@ -429,6 +446,7 @@ export function RegistrationTable({
                               pay_proof_last5: reg.pay_proof_last5 ?? undefined,
                             };
                             setProofViewingContext(ctx);
+                            setProofRegistrationId(reg.id);
                             const url = getPaymentProofUrl(reg);
                             if (url) {
                               setProofRegIdToFetch(null); // 避免混用 fetch 結果
@@ -510,6 +528,7 @@ export function RegistrationTable({
           if (!open) {
             setProofImageUrl(null);
             setProofRegIdToFetch(null);
+            setProofRegistrationId(null);
             setProofViewingContext(null);
           }
         }}
@@ -517,6 +536,10 @@ export function RegistrationTable({
         isLoading={!!proofRegIdToFetch && !proofRegData}
         context={proofViewingContext ?? (proofRegData ? { contact_name: proofRegData.contact_name, ref_code: proofRegData.ref_code, pay_proof_last5: proofRegData.pay_proof_last5 ?? undefined } : null)}
         onRetry={!!proofRegIdToFetch ? () => refetchProof() : undefined}
+        registrationId={proofRegistrationId}
+        onReplaceSuccess={(newUrl) => {
+          if (newUrl) setProofImageUrl(newUrl);
+        }}
       />
 
       {/* 已付款 → 尚未付款：確認後一併清除資料庫中的付款憑證 */}

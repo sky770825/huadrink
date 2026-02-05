@@ -13,7 +13,14 @@ import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // 閒置後回到分頁時不自動 refetch，避免連線冷卻導致請求卡住、一直顯示載入
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 /** 未登入或非管理員時導向登入頁 */
 function RequireAdmin({ children }: { children: React.ReactNode }) {

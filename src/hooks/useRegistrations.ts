@@ -22,7 +22,9 @@ function parseAttendeeList(data: Json | null): Attendee[] {
 const LIST_SELECT = 'id, ref_code, type, headcount, attendee_list, company, title, contact_name, phone, email, line_id, diet, diet_other, allergy_note, photo_consent, inviter, vip_note, invoice_needed, invoice_title, invoice_tax_id, pay_method, pay_status, pay_proof_url, pay_proof_last5, status, seat_zone, table_no, admin_note, created_at, updated_at';
 const DETAIL_SELECT = LIST_SELECT; // 詳情同列表，不載入 base64
 
-async function fetchRegistrations(): Promise<Registration[]> {
+const REGISTRATIONS_QUERY_TIMEOUT_MS = 20_000; // 20 秒，避免重整後請求卡住一直載入
+
+async function fetchRegistrationsInner(): Promise<Registration[]> {
   const { data, error } = await huadrink
     .from('registrations')
     .select(LIST_SELECT)
@@ -63,25 +65,47 @@ async function fetchRegistrations(): Promise<Registration[]> {
   }));
 }
 
+function fetchRegistrations(signal?: AbortSignal): Promise<Registration[]> {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('載入逾時，請檢查網路後重試')), REGISTRATIONS_QUERY_TIMEOUT_MS);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timeoutId);
+      reject(new DOMException('Aborted', 'AbortError'));
+    });
+  });
+  return Promise.race([
+    fetchRegistrationsInner().then((r) => {
+      clearTimeout(timeoutId!);
+      return r;
+    }),
+    timeoutPromise,
+  ]);
+}
+
 /** 登入成功後可呼叫，預先載入報名列表以加速進入後台 */
 export function prefetchRegistrations(queryClient: QueryClient) {
-  return queryClient.prefetchQuery({ queryKey: ['registrations'], queryFn: fetchRegistrations });
+  return queryClient.prefetchQuery({ queryKey: ['registrations'], queryFn: () => fetchRegistrations() });
 }
 
 export function useRegistrations() {
   return useQuery({
     queryKey: ['registrations'],
-    queryFn: fetchRegistrations,
+    queryFn: ({ signal }) => fetchRegistrations(signal),
     staleTime: 10 * 1000, // 10 秒內不重複請求
+    retry: 2,
+    retryDelay: (i) => Math.min(1000 * 2 ** i, 5000),
   });
 }
 
-const PAYMENT_QUERY_TIMEOUT_MS = 60_000; // 60 秒，追求最大穩定性
+const PAYMENT_QUERY_TIMEOUT_MS = 20_000; // 20 秒，避免重整後卡在載入；逾時會顯示錯誤與重試
 
-/** 內部付款頁專用：只查「內部＋未付款」的 id / ref_code / contact_name，載入快 */
-export function usePaymentEligibleRegistrations() {
+/** 繳費付款頁專用：依身份查「內部」或「外部」＋未付款的 id / ref_code / contact_name */
+export function usePaymentEligibleRegistrations(memberType: 'internal' | 'external', options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   return useQuery({
-    queryKey: ['registrations', 'payment-eligible'],
+    queryKey: ['registrations', 'payment-eligible', memberType],
+    enabled: enabled && !!memberType,
     queryFn: async ({ signal }): Promise<Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[]> => {
       let timeoutId: ReturnType<typeof setTimeout>;
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -96,7 +120,7 @@ export function usePaymentEligibleRegistrations() {
         const { data, error } = await huadrink
           .from('registrations')
           .select('id, ref_code, contact_name, type, pay_status')
-          .eq('type', 'internal')
+          .eq('type', memberType)
           .eq('pay_status', 'unpaid')
           .order('contact_name', { ascending: true });
 
@@ -113,9 +137,9 @@ export function usePaymentEligibleRegistrations() {
         throw e;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 分鐘內不重取，最大化穩定
-    retry: 5, // 最多重試 5 次
-    retryDelay: (attemptIndex) => Math.min(2000 * 2 ** attemptIndex, 15000), // 退避 2s、4s、8s…，最長 15s
+    staleTime: 5 * 60 * 1000, // 5 分鐘內不重取
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 }
 
