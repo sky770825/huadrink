@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { REGISTRATION_TYPE_LABELS, EVENT_INFO } from '@/lib/constants';
 import { getMemberByContactName } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import type { Registration } from '@/types/registration';
 import { Link } from 'react-router-dom';
 
@@ -12,6 +13,7 @@ interface SuccessPageProps {
 
 export function SuccessPage({ registration }: SuccessPageProps) {
   const { toast } = useToast();
+  const { members } = useMembers();
 
   return (
     <div className="min-h-screen marble-bg py-12 md:py-20">
@@ -59,7 +61,7 @@ export function SuccessPage({ registration }: SuccessPageProps) {
                 <span className="font-medium">
                   {registration.type === 'internal'
                     ? (() => {
-                        const member = getMemberByContactName(registration.contact_name);
+                        const member = getMemberByContactName(registration.contact_name, members);
                         return member
                           ? `編號 ${member.id} － ${registration.contact_name}`
                           : registration.contact_name;

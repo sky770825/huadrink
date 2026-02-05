@@ -7,10 +7,12 @@ import { RegistrationDetailModal } from '@/components/admin/RegistrationDetailMo
 import { SeatingManager } from '@/components/admin/SeatingManager';
 import { ManualRegistrationForm } from '@/components/admin/ManualRegistrationForm';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
+import { InternalMembersManager } from '@/components/admin/InternalMembersManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getUnregisteredInternalMembers } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import {
   Diamond,
   Users,
@@ -56,9 +58,10 @@ export default function AdminDashboard() {
     setActiveTab('list');
   };
 
+  const { members } = useMembers();
   const unregisteredInternalMembers = useMemo(
-    () => getUnregisteredInternalMembers(registrations || []),
-    [registrations]
+    () => getUnregisteredInternalMembers(registrations || [], members),
+    [registrations, members]
   );
 
   // 漸進式載入：立即顯示頁面結構，資料載入中時顯示 skeleton
@@ -234,6 +237,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="list" className="text-xs sm:text-sm px-3 py-1.5">名單管理</TabsTrigger>
             <TabsTrigger value="add" className="text-xs sm:text-sm px-3 py-1.5">提交名單</TabsTrigger>
             <TabsTrigger value="seating" className="text-xs sm:text-sm px-3 py-1.5">座位安排</TabsTrigger>
+            <TabsTrigger value="members" className="text-xs sm:text-sm px-3 py-1.5">內部成員</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs sm:text-sm px-3 py-1.5">系統設定</TabsTrigger>
           </TabsList>
 
@@ -263,6 +267,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="seating">
             <SeatingManager />
+          </TabsContent>
+
+          <TabsContent value="members">
+            <InternalMembersManager />
           </TabsContent>
 
           <TabsContent value="settings">

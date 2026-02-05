@@ -9,6 +9,7 @@ import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSett
 import { useToast } from '@/hooks/use-toast';
 import { REGISTRATION_TYPE_LABELS, SEAT_ZONE_LABELS } from '@/lib/constants';
 import { getMemberByContactName } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import { Loader2, Wand2, Save } from 'lucide-react';
 import type { Registration, SeatZone } from '@/types/registration';
 
@@ -18,6 +19,7 @@ export function SeatingManager() {
   const updateRegistration = useUpdateRegistration();
   const updateSetting = useUpdateSystemSetting();
   const { toast } = useToast();
+  const { members } = useMembers();
 
   const [totalTables, setTotalTables] = useState(settings?.total_tables?.toString() || '10');
   const [seatsPerTable, setSeatsPerTable] = useState(settings?.seats_per_table?.toString() || '10');
@@ -38,58 +40,105 @@ export function SeatingManager() {
 
   const handleAutoAssign = async () => {
     if (!registrations) return;
-    
+
     setIsAutoAssigning(true);
-    
+
     try {
       const tables = parseInt(totalTables);
       const seatsLimit = parseInt(seatsPerTable);
-      
-      // Group by type: VIP first, then internal, then external
-      const vipRegs = activeRegistrations.filter((r) => r.type === 'vip');
-      const internalRegs = activeRegistrations.filter((r) => r.type === 'internal');
-      const externalRegs = activeRegistrations.filter((r) => r.type === 'external');
-      
-      const sorted = [...vipRegs, ...internalRegs, ...externalRegs];
-      
       const tableSeats: number[] = new Array(tables).fill(0);
-      
-      for (const reg of sorted) {
-        // Find table with space
-        let assignedTable = -1;
-        
-        // Try to find a table where same-registration attendees can fit
-        for (let t = 0; t < tables; t++) {
-          if (tableSeats[t] + reg.headcount <= seatsLimit) {
-            assignedTable = t + 1;
-            tableSeats[t] += reg.headcount;
-            break;
+
+      // 1) 依「來賓來源」分組：有 inviter 的外部／VIP 同來源一組，其餘（內部或無 inviter）各自一組
+      const inviterMap = new Map<string, Registration[]>();
+      const ungrouped: Registration[] = [];
+      for (const r of activeRegistrations) {
+        if ((r.type === 'external' || r.type === 'vip') && r.inviter?.trim()) {
+          const key = r.inviter.trim();
+          if (!inviterMap.has(key)) inviterMap.set(key, []);
+          inviterMap.get(key)!.push(r);
+        } else {
+          ungrouped.push(r);
+        }
+      }
+
+      type AssignmentGroup = { regs: Registration[]; headcount: number };
+      const groups: AssignmentGroup[] = [];
+      for (const regs of inviterMap.values()) {
+        groups.push({ regs, headcount: regs.reduce((s, r) => s + r.headcount, 0) });
+      }
+      for (const r of ungrouped) {
+        groups.push({ regs: [r], headcount: r.headcount });
+      }
+
+      // 2) 排序：VIP → 內部 → 外部；同類型則人數多的組優先（較易整組排同一桌）
+      const typeOrder = (r: Registration) => (r.type === 'vip' ? 0 : r.type === 'internal' ? 1 : 2);
+      groups.sort((a, b) => {
+        const ta = typeOrder(a.regs[0]);
+        const tb = typeOrder(b.regs[0]);
+        if (ta !== tb) return ta - tb;
+        return b.headcount - a.headcount;
+      });
+
+      // 3) 逐組配桌：同來源盡量同一桌；一桌放不下則依序填滿下一桌
+      for (const group of groups) {
+        const seatZone: SeatZone =
+          group.regs[0].type === 'vip' ? 'vip' : group.regs[0].type === 'internal' ? 'internal' : 'general';
+
+        if (group.headcount <= seatsLimit) {
+          // 整組可放一桌：找第一個能放得下的桌
+          let assignedTable = -1;
+          for (let t = 0; t < tables; t++) {
+            if (tableSeats[t] + group.headcount <= seatsLimit) {
+              assignedTable = t + 1;
+              tableSeats[t] += group.headcount;
+              break;
+            }
+          }
+          if (assignedTable === -1) {
+            const maxSpace = Math.max(...tableSeats.map((s, i) => seatsLimit - s));
+            assignedTable = tableSeats.findIndex((s) => seatsLimit - s === maxSpace) + 1;
+            tableSeats[assignedTable - 1] += group.headcount;
+          }
+          for (const reg of group.regs) {
+            await updateRegistration.mutateAsync({
+              id: reg.id,
+              updates: { table_no: assignedTable, seat_zone: seatZone },
+            });
+          }
+        } else {
+          // 一桌放不下：同來源依序填滿桌（先填滿一桌再下一桌）
+          let regIndex = 0;
+          const regs = group.regs;
+          while (regIndex < regs.length) {
+            const reg = regs[regIndex];
+            let assignedTable = -1;
+            for (let t = 0; t < tables; t++) {
+              if (tableSeats[t] + reg.headcount <= seatsLimit) {
+                assignedTable = t + 1;
+                tableSeats[t] += reg.headcount;
+                break;
+              }
+            }
+            if (assignedTable === -1) {
+              const maxSpace = Math.max(...tableSeats.map((s, i) => seatsLimit - s));
+              const t = tableSeats.findIndex((s) => seatsLimit - s === maxSpace);
+              assignedTable = t + 1;
+              tableSeats[t] += reg.headcount;
+            }
+            await updateRegistration.mutateAsync({
+              id: reg.id,
+              updates: { table_no: assignedTable, seat_zone: seatZone },
+            });
+            regIndex++;
           }
         }
-        
-        if (assignedTable === -1) {
-          // Find any table with most space
-          const maxSpace = Math.max(...tableSeats.map((s, i) => seatsLimit - s));
-          assignedTable = tableSeats.findIndex((s) => seatsLimit - s === maxSpace) + 1;
-          tableSeats[assignedTable - 1] += reg.headcount;
-        }
-        
-        const seatZone: SeatZone = reg.type === 'vip' ? 'vip' : reg.type === 'internal' ? 'internal' : 'general';
-        
-        await updateRegistration.mutateAsync({
-          id: reg.id,
-          updates: {
-            table_no: assignedTable,
-            seat_zone: seatZone,
-          },
-        });
       }
-      
+
       toast({
         title: '自動分桌完成',
-        description: `已分配 ${sorted.length} 筆報名至 ${tables} 桌`,
+        description: `已依來賓來源盡量集中分配至 ${tables} 桌`,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: '分桌失敗',
         description: '請稍後再試',
@@ -183,18 +232,21 @@ export function SeatingManager() {
             <Save className="w-4 h-4" />
             儲存設定
           </Button>
-          <Button
-            onClick={handleAutoAssign}
-            disabled={isAutoAssigning}
-            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            {isAutoAssigning ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Wand2 className="w-4 h-4" />
-            )}
-            自動分桌
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={handleAutoAssign}
+              disabled={isAutoAssigning}
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {isAutoAssigning ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4" />
+              )}
+              自動分桌
+            </Button>
+            <span className="text-xs text-muted-foreground">同來源（邀請人）來賓會盡量排在同一桌</span>
+          </div>
         </div>
       </div>
 
@@ -241,7 +293,7 @@ export function SeatingManager() {
                         <span className="font-medium">
                           {reg.type === 'internal'
                             ? (() => {
-                                const member = getMemberByContactName(reg.contact_name);
+                                const member = getMemberByContactName(reg.contact_name, members);
                                 return member ? `${member.id}. ${reg.contact_name}` : reg.contact_name;
                               })()
                             : reg.contact_name}
@@ -299,7 +351,7 @@ export function SeatingManager() {
                   <span className="font-medium">
                     {reg.type === 'internal'
                       ? (() => {
-                          const member = getMemberByContactName(reg.contact_name);
+                          const member = getMemberByContactName(reg.contact_name, members);
                           return member ? `${member.id}. ${reg.contact_name}` : reg.contact_name;
                         })()
                       : reg.contact_name}

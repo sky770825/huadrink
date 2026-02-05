@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { REGISTRATION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/constants';
 import { getMemberByContactName } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import { getDuplicateGroupIds, sortByMemberId } from '@/lib/registrations';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Trash2, Copy, Wallet, Loader2 } from 'lucide-react';
 import { getPaymentProofUrl, getPaymentProofStoragePath } from '@/lib/utils';
@@ -79,6 +80,7 @@ export function RegistrationTable({
   const { data: proofRegData, refetch: refetchProof } = useRegistration(proofRegIdToFetch || '', { includePayProofBase64: true });
   /** 欲改為未付款的報名（需確認後一併清除付款憑證） */
   const [pendingUnpaidReg, setPendingUnpaidReg] = useState<Registration | null>(null);
+  const { members } = useMembers();
 
   const duplicateIds = getDuplicateGroupIds(registrations);
 
@@ -107,7 +109,7 @@ export function RegistrationTable({
   });
 
   /** 預設照序號排序：內部夥伴依成員編號，其餘依報名編號 */
-  const sortedFiltered = sortByMemberId(filtered);
+  const sortedFiltered = sortByMemberId(filtered, members);
 
   const unpaidList = registrations.filter((r) => r.pay_status === 'unpaid');
   const pendingList = registrations.filter((r) => r.pay_status === 'pending');
@@ -370,6 +372,7 @@ export function RegistrationTable({
               <TableHead className="font-medium">報名編號</TableHead>
               <TableHead className="font-medium">類型</TableHead>
               <TableHead className="font-medium">聯絡人</TableHead>
+              <TableHead className="font-medium">來賓來源</TableHead>
               <TableHead className="font-medium text-center">人數</TableHead>
               <TableHead className="font-medium">付款狀態</TableHead>
               <TableHead className="font-medium">報名時間</TableHead>
@@ -379,7 +382,7 @@ export function RegistrationTable({
           <TableBody>
             {paginatedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   沒有符合條件的報名資料
                 </TableCell>
               </TableRow>
@@ -407,11 +410,14 @@ export function RegistrationTable({
                   </TableCell>
                   <TableCell className="font-medium">
                     {reg.type === 'internal' ? (() => {
-                      const member = getMemberByContactName(reg.contact_name);
+                      const member = getMemberByContactName(reg.contact_name, members);
                       return member
                         ? `${member.id}. ${reg.contact_name}`
                         : reg.contact_name;
                     })() : reg.contact_name}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-[120px] truncate" title={reg.inviter || undefined}>
+                    {reg.type === 'external' || reg.type === 'vip' ? (reg.inviter || '-') : '-'}
                   </TableCell>
                   <TableCell className="text-center">{reg.headcount}</TableCell>
                   <TableCell>

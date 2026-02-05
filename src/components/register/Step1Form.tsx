@@ -4,7 +4,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormSection } from './FormCard';
 import { REGISTRATION_TYPE_LABELS, EVENT_INFO } from '@/lib/constants';
-import { MEMBERS, getUnregisteredInternalMembers } from '@/lib/members';
+import { getUnregisteredInternalMembers } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import type { RegistrationFormData } from '@/types/registration';
 import { Calendar, Clock } from 'lucide-react';
 
@@ -15,7 +16,8 @@ interface Step1FormProps {
 }
 
 export function Step1Form({ form, registrations = [] }: Step1FormProps) {
-  const availableMembers = getUnregisteredInternalMembers(registrations);
+  const { members } = useMembers();
+  const availableMembers = getUnregisteredInternalMembers(registrations, members);
   const watchType = form.watch('type');
   const watchMemberId = form.watch('member_id');
 
@@ -122,7 +124,7 @@ export function Step1Form({ form, registrations = [] }: Step1FormProps) {
                           const memberId = parseInt(value);
                           field.onChange(memberId);
                           // 自動填充姓名到 contact_name
-                          const member = MEMBERS.find(m => m.id === memberId);
+                          const member = members.find(m => m.id === memberId);
                           if (member) {
                             form.setValue('contact_name', member.name);
                           }
@@ -160,7 +162,7 @@ export function Step1Form({ form, registrations = [] }: Step1FormProps) {
                     <FormMessage />
                     {watchMemberId && (
                       <p className="text-sm text-muted-foreground mt-2">
-                        已選擇：{availableMembers.find(m => m.id === watchMemberId)?.name ?? MEMBERS.find(m => m.id === watchMemberId)?.name}
+                        已選擇：{availableMembers.find(m => m.id === watchMemberId)?.name ?? members.find(m => m.id === watchMemberId)?.name}
                       </p>
                     )}
                   </FormItem>

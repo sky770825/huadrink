@@ -11,6 +11,7 @@ import { useRegistration, useUpdateRegistration } from '@/hooks/useRegistrations
 import { useToast } from '@/hooks/use-toast';
 import { REGISTRATION_TYPE_LABELS, DIET_TYPE_LABELS, PAYMENT_STATUS_LABELS, SEAT_ZONE_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/constants';
 import { getMemberByContactName } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import { Loader2, Save, ExternalLink, CreditCard, Eye } from 'lucide-react';
 import { getPaymentProofUrl } from '@/lib/utils';
 import { PaymentProofButton } from '@/components/admin/PaymentProofDialog';
@@ -26,6 +27,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
   const { data: registration, isLoading } = useRegistration(registrationId || '');
   const updateMutation = useUpdateRegistration();
   const { toast } = useToast();
+  const { members } = useMembers();
 
   const [payStatus, setPayStatus] = useState<PaymentStatus | ''>('');
   const [seatZone, setSeatZone] = useState<SeatZone | ''>('');
@@ -113,7 +115,7 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
                 <Label className="text-muted-foreground">聯絡人</Label>
                 <p className="font-medium">
                   {registration.type === 'internal' ? (() => {
-                    const member = getMemberByContactName(registration.contact_name);
+                    const member = getMemberByContactName(registration.contact_name, members);
                     return member
                       ? `編號 ${member.id} － ${registration.contact_name}`
                       : registration.contact_name;
@@ -132,6 +134,12 @@ export function RegistrationDetailModal({ registrationId, onClose }: Registratio
                 <Label className="text-muted-foreground">LINE ID</Label>
                 <p className="font-medium">{registration.line_id || '-'}</p>
               </div>
+              {(registration.type === 'external' || registration.type === 'vip') && (
+                <div>
+                  <Label className="text-muted-foreground">來賓來源</Label>
+                  <p className="font-medium">{registration.inviter || '-'}</p>
+                </div>
+              )}
             </div>
 
             <Separator />

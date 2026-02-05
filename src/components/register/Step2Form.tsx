@@ -4,8 +4,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormSection } from './FormCard';
 import { DIET_TYPE_LABELS } from '@/lib/constants';
+import { useMembers } from '@/hooks/useMembers';
 import type { RegistrationFormData } from '@/types/registration';
 
 interface Step2FormProps {
@@ -13,6 +15,7 @@ interface Step2FormProps {
 }
 
 export function Step2Form({ form }: Step2FormProps) {
+  const { members } = useMembers();
   const watchDiet = form.watch('diet');
   const watchType = form.watch('type');
   const watchMemberId = form.watch('member_id');
@@ -186,26 +189,39 @@ export function Step2Form({ form }: Step2FormProps) {
         />
       </FormSection>
 
-      {/* Inviter */}
-      <FormSection title="來賓來源（選填）">
-        <FormField
-          control={form.control}
-          name="inviter"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>誰邀請您參加？</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  placeholder="邀約人姓名或代碼"
-                  className="input-luxury"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </FormSection>
+      {/* Inviter：僅外部／VIP 顯示，從內部成員名單選擇 */}
+      {(watchType === 'external' || watchType === 'vip') && (
+        <FormSection title="來賓來源（選填）" description="誰邀請您參加？可選擇對應的內部成員">
+          <FormField
+            control={form.control}
+            name="inviter"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>邀請人</FormLabel>
+                <Select
+                  value={field.value || '__none__'}
+                  onValueChange={(v) => field.onChange(v === '__none__' ? undefined : v)}
+                >
+                  <FormControl>
+                    <SelectTrigger className="input-luxury">
+                      <SelectValue placeholder="請選擇（選填）" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="__none__">請選擇（選填）</SelectItem>
+                    {members.map((m) => (
+                      <SelectItem key={m.id} value={m.name}>
+                        {m.id}. {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </FormSection>
+      )}
     </div>
   );
 }

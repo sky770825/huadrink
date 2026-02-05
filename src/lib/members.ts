@@ -1,5 +1,6 @@
 // 內部成員名單
 // 從 CSV 文件導入的成員資料
+// 無痛轉換：可改為從資料庫讀取，見 MIGRATION_內部成員名單.md
 
 export interface Member {
   id: number;
@@ -7,6 +8,9 @@ export interface Member {
   specialty: string;
   phone?: string; // 電話將從 Google Sheets 自動填選
 }
+
+/** 名單來源：'static' = 使用下方 MEMBERS；'database' = 從 huadrink.internal_members 讀取（後台管理） */
+export const MEMBERS_SOURCE: 'static' | 'database' = 'database';
 
 // 從 CSV 解析的成員資料
 export const MEMBERS: Member[] = [
@@ -117,30 +121,37 @@ export const MEMBERS: Member[] = [
   { id: 108, name: '蔡明翰Marco', specialty: '房屋仲介業- 新北市林口區' },
   { id: 109, name: '顏羽宏', specialty: '一般照明設備' },
   { id: 110, name: '孫士閔', specialty: 'AIoT物聯網平台' },
+  { id: 111, name: '郭哲宇', specialty: '' },
 ];
 
 /**
  * 根據 ID 查找成員
+ * @param members 可傳入名單（無痛轉換時由 useMembers 傳入）；未傳則使用 MEMBERS
  */
-export function getMemberById(id: number): Member | undefined {
-  return MEMBERS.find(m => m.id === id);
+export function getMemberById(id: number, members?: Member[]): Member | undefined {
+  const list = members ?? MEMBERS;
+  return list.find((m) => m.id === id);
 }
 
 /**
  * 根據名稱查找成員
+ * @param members 可傳入名單；未傳則使用 MEMBERS
  */
-export function getMemberByName(name: string): Member | undefined {
-  return MEMBERS.find(m => m.name === name);
+export function getMemberByName(name: string, members?: Member[]): Member | undefined {
+  const list = members ?? MEMBERS;
+  return list.find((m) => m.name === name);
 }
 
 /**
  * 依聯絡人姓名與內部名單比對，取得對應的內部成員（用於顯示編號）
  * 比對時會忽略多餘空白，並支援姓名包含關係
+ * @param members 可傳入名單；未傳則使用 MEMBERS
  */
-export function getMemberByContactName(contactName: string): Member | undefined {
+export function getMemberByContactName(contactName: string, members?: Member[]): Member | undefined {
   if (!contactName?.trim()) return undefined;
+  const list = members ?? MEMBERS;
   const name = contactName.trim().replace(/\s+/g, '');
-  return MEMBERS.find(
+  return list.find(
     (m) =>
       m.name.replace(/\s+/g, '') === name ||
       name.includes(m.name.replace(/\s+/g, '')) ||
@@ -153,15 +164,18 @@ export type RegistrationForUnregistered = { type: string; contact_name?: string 
 
 /**
  * 依報名名單計算「未報名的內部成員」列表（依聯絡人姓名與名單比對，僅供參考）
+ * @param members 可傳入名單；未傳則使用 MEMBERS
  */
 export function getUnregisteredInternalMembers(
-  registrations: RegistrationForUnregistered[]
+  registrations: RegistrationForUnregistered[],
+  members?: Member[]
 ): Member[] {
+  const list = members ?? MEMBERS;
   const registeredIds = new Set<number>();
   registrations.forEach((reg) => {
     if (reg.type !== 'internal' || !reg.contact_name) return;
-    const member = getMemberByContactName(reg.contact_name);
+    const member = getMemberByContactName(reg.contact_name, list);
     if (member) registeredIds.add(member.id);
   });
-  return MEMBERS.filter((m) => !registeredIds.has(m.id));
+  return list.filter((m) => !registeredIds.has(m.id));
 }

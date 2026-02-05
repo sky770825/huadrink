@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Hero } from '@/components/register/Hero';
 import { FormCard } from '@/components/register/FormCard';
 import { getMemberByContactName } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import { sortByMemberId } from '@/lib/registrations';
 import { Copy, Loader2, Upload, ArrowLeft, Camera } from 'lucide-react';
 import type { Registration } from '@/types/registration';
@@ -20,6 +21,7 @@ type PaymentMemberType = 'internal' | 'external';
 
 export default function Payment() {
   const queryClient = useQueryClient();
+  const { members } = useMembers();
   const [memberType, setMemberType] = useState<PaymentMemberType | null>(null);
   const { data: paymentEligible = [], isLoading: regLoading, isError: regError, refetch: refetchReg } = usePaymentEligibleRegistrations(
     memberType ?? 'internal',
@@ -61,7 +63,7 @@ export default function Payment() {
     setSelectedId('');
   }, [memberType]);
 
-  const eligible = sortByMemberId(paymentEligible);
+  const eligible = sortByMemberId(paymentEligible, members);
 
   const accountNumber = settings?.payment_account_number ?? '（請聯繫主辦取得帳號）';
   const bankName = settings?.payment_bank_name ?? '';
@@ -377,7 +379,7 @@ export default function Payment() {
                         const label =
                           memberType === 'internal'
                             ? (() => {
-                                const member = getMemberByContactName(r.contact_name);
+                                const member = getMemberByContactName(r.contact_name, members);
                                 return member
                                   ? `${member.id}. ${r.contact_name}（${r.ref_code}）`
                                   : `${r.contact_name}（${r.ref_code}）`;

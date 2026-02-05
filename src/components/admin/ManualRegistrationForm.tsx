@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useCreateRegistration } from '@/hooks/useRegistrations';
 import { useToast } from '@/hooks/use-toast';
 import { REGISTRATION_TYPE_LABELS, DIET_TYPE_LABELS } from '@/lib/constants';
-import { MEMBERS } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import { Loader2, Save, UserPlus } from 'lucide-react';
 import type { RegistrationType, DietType } from '@/types/registration';
 
@@ -47,6 +47,7 @@ type ManualRegistrationFormData = z.infer<typeof manualRegistrationSchema>;
 
 export function ManualRegistrationForm() {
   const { toast } = useToast();
+  const { members = [] } = useMembers();
   const createRegistration = useCreateRegistration();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -79,7 +80,7 @@ export function ManualRegistrationForm() {
       // 如果是內部成員，自動填入姓名
       let contactName = data.contact_name;
       if (data.type === 'internal' && data.member_id) {
-        const member = MEMBERS.find(m => m.id === data.member_id);
+        const member = members.find(m => m.id === data.member_id);
         if (member) {
           contactName = member.name;
         }
@@ -188,7 +189,7 @@ export function ManualRegistrationForm() {
                     onValueChange={(value) => {
                       const memberId = parseInt(value);
                       field.onChange(memberId);
-                      const member = MEMBERS.find((m) => m.id === memberId);
+                      const member = members.find((m) => m.id === memberId);
                       if (member) {
                         // 預設帶入成員姓名，但仍允許後續手動調整
                         form.setValue('contact_name', member.name);
@@ -201,7 +202,7 @@ export function ManualRegistrationForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="max-h-[300px]">
-                      {MEMBERS.map((member) => (
+                      {members.map((member) => (
                         <SelectItem key={member.id} value={member.id.toString()}>
                           <div className="flex flex-col">
                             <span className="font-medium">

@@ -1,4 +1,5 @@
 import { getMemberByContactName } from '@/lib/members';
+import type { Member } from '@/lib/members';
 
 /** 同一人重複報名：以聯絡人姓名 + 手機正規化後為 key，回傳該 key 對應的報名 id 列表（僅保留有重複的） */
 export function getDuplicateGroupIds<T extends { id: string; contact_name: string; phone?: string | null }>(
@@ -18,16 +19,17 @@ export function getDuplicateGroupIds<T extends { id: string; contact_name: strin
   return duplicateIds;
 }
 
-/** 依內部編號排序：內部夥伴依成員編號，其餘依報名編號 */
+/** 依內部編號排序：內部夥伴依成員編號，其餘依報名編號。可傳入 members 以配合無痛轉換。 */
 export function sortByMemberId<T extends { type: string; contact_name: string; ref_code?: string | null }>(
-  list: T[]
+  list: T[],
+  members?: Member[]
 ): T[] {
   return [...list].sort((a, b) => {
     const aInternal = a.type === 'internal';
     const bInternal = b.type === 'internal';
     if (aInternal && bInternal) {
-      const memberA = getMemberByContactName(a.contact_name);
-      const memberB = getMemberByContactName(b.contact_name);
+      const memberA = getMemberByContactName(a.contact_name, members);
+      const memberB = getMemberByContactName(b.contact_name, members);
       const idA = memberA?.id ?? 9999;
       const idB = memberB?.id ?? 9999;
       return idA - idB;

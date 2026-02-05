@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tansta
 import { huadrink } from '@/lib/supabase-huadrink';
 import type { Registration, Attendee } from '@/types/registration';
 import type { Json } from '@/integrations/supabase/types';
-import { MEMBERS } from '@/lib/members';
+import { useMembers } from '@/hooks/useMembers';
 import { generateRefCode } from '@/lib/refCode';
 
 function parseAttendeeList(data: Json | null): Attendee[] {
@@ -240,6 +240,7 @@ export function useUpdateRegistration() {
 
 export function useRegistrationStats() {
   const { data: registrations } = useRegistrations();
+  const { members } = useMembers();
 
   const stats = {
     total: 0,
@@ -260,7 +261,7 @@ export function useRegistrationStats() {
     /** 依聯絡人姓名與內部名單比對，已報名的內部成員人數（不重複） */
     internalRegisteredCount: 0,
     /** 內部成員總數中尚未報名的人數（僅供參考） */
-    internalNotRegisteredCount: MEMBERS.length,
+    internalNotRegisteredCount: members.length,
   };
 
   if (registrations) {
@@ -282,7 +283,7 @@ export function useRegistrationStats() {
         // 內部報名：以聯絡人姓名與內部成員名單比對，記錄已報名成員 ID
         if (reg.type === 'internal' && reg.contact_name) {
           const name = reg.contact_name.trim().replace(/\s+/g, '');
-          const member = MEMBERS.find(
+          const member = members.find(
             (m) =>
               m.name.replace(/\s+/g, '') === name ||
               name.includes(m.name.replace(/\s+/g, '')) ||
@@ -315,7 +316,7 @@ export function useRegistrationStats() {
     });
 
     stats.internalRegisteredCount = registeredInternalMemberIds.size;
-    stats.internalNotRegisteredCount = Math.max(0, MEMBERS.length - registeredInternalMemberIds.size);
+    stats.internalNotRegisteredCount = Math.max(0, members.length - registeredInternalMemberIds.size);
   }
 
   return stats;
