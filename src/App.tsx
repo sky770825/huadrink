@@ -106,8 +106,9 @@ const App = () => {
             <Route path="/" element={<Index />} />
             <Route path="/register" element={<Register />} />
             <Route path="/payment" element={<Payment />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+            {/* 後台不再需要帳號密碼，直接顯示 Dashboard */}
+            <Route path="/admin/login" element={<Navigate to="/admin" replace />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
