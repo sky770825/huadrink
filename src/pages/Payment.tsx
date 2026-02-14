@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePaymentEligibleRegistrations } from '@/hooks/useRegistrations';
+import { usePaymentEligibleRegistrations, prefetchPaymentEligible } from '@/hooks/useRegistrations';
+import { prefetchInternalMembers } from '@/hooks/useMembers';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +15,7 @@ import { FormCard } from '@/components/register/FormCard';
 import { getMemberByContactName } from '@/lib/members';
 import { useMembers } from '@/hooks/useMembers';
 import { sortByMemberId } from '@/lib/registrations';
-import { Copy, Loader2, Upload, ArrowLeft, Camera } from 'lucide-react';
+import { Copy, Loader2, Upload, ArrowLeft, Camera, RefreshCw } from 'lucide-react';
 import type { Registration } from '@/types/registration';
 
 type PaymentMemberType = 'internal' | 'external';
@@ -23,7 +24,7 @@ export default function Payment() {
   const queryClient = useQueryClient();
   const { members } = useMembers();
   const [memberType, setMemberType] = useState<PaymentMemberType | null>(null);
-  const { data: paymentEligible = [], isLoading: regLoading, isError: regError, refetch: refetchReg } = usePaymentEligibleRegistrations(
+  const { data: paymentEligible = [], isLoading: regLoading, isError: regError, refetch: refetchReg, isFetching: regFetching } = usePaymentEligibleRegistrations(
     memberType ?? 'internal',
     { enabled: memberType !== null }
   );
@@ -63,7 +64,22 @@ export default function Payment() {
     setSelectedId('');
   }, [memberType]);
 
-  const eligible = sortByMemberId(paymentEligible, members);
+  /** 進站即預載內部/外部名單＋內部成員，點選身份後下拉選單即時顯示 */
+  useEffect(() => {
+    prefetchPaymentEligible(queryClient);
+    prefetchInternalMembers(queryClient);
+  }, [queryClient]);
+
+  const eligible = useMemo(
+    () => sortByMemberId(paymentEligible, members),
+    [paymentEligible, members]
+  );
+
+  /** 快速刷新：重抓報名名單＋內部成員，排除暫時故障、即時顯示最新資料 */
+  const handleQuickRefresh = () => {
+    refetchReg();
+    prefetchInternalMembers(queryClient);
+  };
 
   const accountNumber = settings?.payment_account_number ?? '（請聯繫主辦取得帳號）';
   const bankName = settings?.payment_bank_name ?? '';
@@ -79,10 +95,40 @@ export default function Payment() {
     }
   };
 
-  /** 單張圖片建議不超過 8MB，避免上傳過久或卡住 */
-  const MAX_FILE_BYTES = 8 * 1024 * 1024;
-  /** 超過 100KB 就壓縮，確保幾百 KB 的 PNG 不會原檔上傳卡住 */
-  const COMPRESS_THRESHOLD_BYTES = 100 * 1024;
+  /** 單張圖片上限 100MB，與 Supabase Storage bucket 一致 */
+  const MAX_FILE_BYTES = 100 * 1024 * 1024;
+  /** 超過 2MB 才壓縮，小檔案直接上傳減少處理時間 */
+  const COMPRESS_THRESHOLD_BYTES = 2 * 1024 * 1024;
+
+  // Keep this aligned with `supabase/config.toml` allowed_mime_types.
+  const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+  function looksLikeImageByExt(name: string): boolean {
+    const ext = name.split('.').pop()?.toLowerCase() ?? '';
+    return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'].includes(ext);
+  }
+
+  function isHeicLike(file: File): boolean {
+    const t = (file.type || '').toLowerCase();
+    if (t === 'image/heic' || t === 'image/heif') return true;
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    return ext === 'heic' || ext === 'heif';
+  }
+
+  function extFromMime(mime: string): string {
+    switch (mime) {
+      case 'image/jpeg':
+        return 'jpg';
+      case 'image/png':
+        return 'png';
+      case 'image/webp':
+        return 'webp';
+      case 'image/gif':
+        return 'gif';
+      default:
+        return 'jpg';
+    }
+  }
 
   /** 使用 Canvas 壓縮圖片：最長邊不超過 maxWidth，輸出 JPEG quality */
   function compressImage(file: File, maxWidth = 1920, quality = 0.85): Promise<File> {
@@ -126,50 +172,71 @@ export default function Payment() {
     });
   }
 
+  async function prepareImageForUpload(input: File, reason?: string): Promise<File> {
+    const isKnownImage = (input.type || '').toLowerCase().startsWith('image/') || looksLikeImageByExt(input.name);
+    if (!isKnownImage) {
+      throw new Error('請上傳圖片檔（JPG、PNG 等）');
+    }
+
+    const mime = (input.type || '').toLowerCase();
+    const isAllowedMime = mime ? ALLOWED_MIME_TYPES.has(mime) : false;
+    const mustConvert = isHeicLike(input) || (mime !== '' && !isAllowedMime);
+
+    // If too large, try converting/compressing first instead of rejecting immediately.
+    const needCompressOrConvert = mustConvert || input.size > COMPRESS_THRESHOLD_BYTES || input.size > MAX_FILE_BYTES;
+
+    const output = needCompressOrConvert ? await compressImage(input) : input;
+    const outMime = (output.type || '').toLowerCase();
+    if (!ALLOWED_MIME_TYPES.has(outMime)) {
+      // Most commonly: browser provides HEIC/HEIF but can't be converted on this device/browser.
+      throw new Error(
+        reason
+          ? `圖片格式不支援，請改用 JPG/PNG 後重試（${reason}）`
+          : '圖片格式不支援，請改用 JPG/PNG 後重試'
+      );
+    }
+
+    if (output.size > MAX_FILE_BYTES) {
+      throw new Error(`檔案過大：請上傳 ${MAX_FILE_BYTES / 1024 / 1024}MB 以內的圖片`);
+    }
+
+    return output;
+  }
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f && f.type.startsWith('image/')) {
-      if (f.size > MAX_FILE_BYTES) {
+    if (!f) return;
+
+    // Some mobile browsers return empty `file.type` for images; allow by extension and normalize to JPEG.
+    const willLikelyConvert = isHeicLike(f) || (f.type && !ALLOWED_MIME_TYPES.has(f.type.toLowerCase()));
+    const willLikelyCompress = f.size > COMPRESS_THRESHOLD_BYTES || f.size > MAX_FILE_BYTES || willLikelyConvert;
+    if (willLikelyCompress) {
+      setIsCompressing(true);
+      toast({ title: willLikelyConvert ? '圖片轉檔中…' : '圖片壓縮中…', duration: 2000 });
+    }
+
+    try {
+      const finalFile = await prepareImageForUpload(f, '格式/大小檢查');
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setFile(finalFile);
+      setPreviewUrl(URL.createObjectURL(finalFile));
+      if (willLikelyCompress) {
         toast({
-          title: '檔案過大',
-          description: '請上傳 8MB 以內的圖片，或先壓縮後再上傳',
-          variant: 'destructive',
+          title: willLikelyConvert ? '已轉為 JPG' : '已壓縮',
+          description: `可送出（約 ${(finalFile.size / 1024).toFixed(0)} KB）`,
+          duration: 2500,
         });
-        setFile(null);
-        setPreviewUrl(null);
-        e.target.value = '';
-        return;
       }
-      const needCompress = f.size > COMPRESS_THRESHOLD_BYTES;
-      if (needCompress) {
-        setIsCompressing(true);
-        toast({ title: '圖片壓縮中…', duration: 2000 });
-      }
-      try {
-        const finalFile = needCompress ? await compressImage(f) : f;
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        setFile(finalFile);
-        setPreviewUrl(URL.createObjectURL(finalFile));
-        if (needCompress) {
-          toast({
-            title: '已壓縮',
-            description: `可送出（約 ${(finalFile.size / 1024).toFixed(0)} KB）`,
-            duration: 2500,
-          });
-        }
-      } catch {
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        setFile(f);
-        setPreviewUrl(URL.createObjectURL(f));
-        toast({ title: '壓縮略過，使用原圖', variant: 'destructive', duration: 2000 });
-      } finally {
-        setIsCompressing(false);
-      }
-    } else if (f) {
-      toast({ title: '請上傳圖片檔（JPG、PNG 等）', variant: 'destructive' });
+    } catch (err) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setFile(null);
       setPreviewUrl(null);
+      const message = err instanceof Error ? err.message : '請檢查網路後重試';
+      toast({ title: '無法使用此圖片', description: message, variant: 'destructive', duration: 4000 });
+    } finally {
+      setIsCompressing(false);
     }
+
     e.target.value = '';
   };
 
@@ -203,15 +270,10 @@ export default function Payment() {
 
     setIsSubmitting(true);
     try {
-      // 送出前再壓縮一次：若檔案仍 > 200KB（例如選圖時未壓到），先壓縮再傳，避免 700KB PNG 等大檔卡住
-      let fileToUpload = file;
-      if (file.size > 200 * 1024) {
-        fileToUpload = await compressImage(file);
-      }
-
-      const ext = fileToUpload.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
-      const path = `${selectedId}/proof.${safeExt}`;
+      // Normalize again right before upload to cover edge cases (e.g. file.type empty on selection).
+      // Also keeps upload MIME type aligned with Storage allowed_mime_types.
+      const fileToUpload = await prepareImageForUpload(file, '送出前檢查');
+      const path = `${selectedId}/proof.${extFromMime(fileToUpload.type)}`;
 
       const uploadPromise = supabase.storage
         .from('payment-proofs')
@@ -341,7 +403,7 @@ export default function Payment() {
             {hasFatalError ? (
               <div className="py-6 text-center space-y-3">
                 <p className="text-muted-foreground">無法載入報名名單，請檢查網路後重試。</p>
-                <Button variant="outline" onClick={() => refetchReg()}>
+                <Button variant="outline" onClick={handleQuickRefresh}>
                   重試
                 </Button>
               </div>
@@ -352,7 +414,7 @@ export default function Payment() {
                 {loadingTooLong && (
                   <div className="flex flex-col items-center gap-2 mt-2">
                     <p className="text-xs text-amber-600">連線較慢</p>
-                    <Button variant="outline" size="sm" onClick={() => refetchReg()}>
+                    <Button variant="outline" size="sm" onClick={handleQuickRefresh}>
                       重試
                     </Button>
                   </div>
@@ -369,7 +431,21 @@ export default function Payment() {
               <form onSubmit={onSubmit} className="space-y-6">
                 {/* 選擇報名者 */}
                 <div>
-                  <Label>選擇報名者</Label>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <Label>選擇報名者</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                      onClick={handleQuickRefresh}
+                      disabled={regFetching}
+                      title="重新載入名單"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 mr-1 ${regFetching ? 'animate-spin' : ''}`} />
+                      重新整理
+                    </Button>
+                  </div>
                   <Select value={selectedId} onValueChange={setSelectedId} required>
                     <SelectTrigger className="input-luxury mt-1">
                       <SelectValue placeholder="請選擇您的報名資料" />

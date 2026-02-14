@@ -31,7 +31,7 @@ if (!url || !serviceKey) {
 
 const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
 
-const FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024; // 50MB
+const FILE_SIZE_LIMIT_BYTES = 100 * 1024 * 1024; // 100MB
 
 async function main() {
   try {
@@ -45,12 +45,12 @@ async function main() {
       if (error.message?.includes('already exists') || error.message?.includes('duplicate')) {
         const { error: updateErr } = await supabase.storage.updateBucket('payment-proofs', { fileSizeLimit: FILE_SIZE_LIMIT_BYTES });
         if (updateErr) console.warn('更新現有 bucket 限制失敗:', updateErr.message);
-        else console.log('payment-proofs bucket 已存在，已更新檔案限制為 50MB');
+        else console.log('payment-proofs bucket 已存在，已更新檔案限制為 100MB');
         process.exit(0);
       }
       throw error;
     }
-    console.log('payment-proofs bucket 建立成功（限制 50MB）');
+    console.log('payment-proofs bucket 建立成功（限制 100MB）');
   } catch (err) {
     console.error('建立失敗:', err.message);
     process.exit(1);

@@ -106,6 +106,33 @@ export function useRegistrations() {
 
 const PAYMENT_QUERY_TIMEOUT_MS = 15_000; // 15 秒逾時，失敗時較快顯示錯誤與重試
 
+async function fetchPaymentEligibleInner(memberType: 'internal' | 'external'): Promise<Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[]> {
+  const { data, error } = await huadrink
+    .from('registrations')
+    .select('id, ref_code, contact_name, type, pay_status')
+    .eq('type', memberType)
+    .eq('pay_status', 'unpaid')
+    .order('contact_name', { ascending: true });
+  if (error) throw error;
+  return (data || []) as Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[];
+}
+
+/** 繳費頁進站時預先載入名單，點選身份後下拉選單即時顯示 */
+export function prefetchPaymentEligible(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: ['registrations', 'payment-eligible', 'internal'],
+      queryFn: () => fetchPaymentEligibleInner('internal'),
+      staleTime: 5 * 60 * 1000,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['registrations', 'payment-eligible', 'external'],
+      queryFn: () => fetchPaymentEligibleInner('external'),
+      staleTime: 5 * 60 * 1000,
+    }),
+  ]);
+}
+
 /** 繳費名單：依 type + pay_status 條件查詢；DB 已有對應複合索引 */
 export function usePaymentEligibleRegistrations(memberType: 'internal' | 'external', options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
@@ -121,21 +148,11 @@ export function usePaymentEligibleRegistrations(memberType: 'internal' | 'extern
           reject(new DOMException('Aborted', 'AbortError'));
         });
       });
-
-      const fetchPromise = (async () => {
-        const { data, error } = await huadrink
-          .from('registrations')
-          .select('id, ref_code, contact_name, type, pay_status')
-          .eq('type', memberType)
-          .eq('pay_status', 'unpaid')
-          .order('contact_name', { ascending: true });
-
-        if (error) throw error;
-        return (data || []) as Pick<Registration, 'id' | 'ref_code' | 'contact_name' | 'type' | 'pay_status'>[];
-      })();
-
       try {
-        const result = await Promise.race([fetchPromise, timeoutPromise]);
+        const result = await Promise.race([
+          fetchPaymentEligibleInner(memberType),
+          timeoutPromise,
+        ]);
         clearTimeout(timeoutId!);
         return result;
       } catch (e) {

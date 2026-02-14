@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Diamond, ArrowRight, CalendarDays, Clock, Users, Star, MapPin, Car, ExternalLink, UserCheck, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { prefetchPaymentEligible } from '@/hooks/useRegistrations';
+import { prefetchInternalMembers } from '@/hooks/useMembers';
 import { Progress } from '@/components/ui/progress';
 import { EVENT_INFO, EVENT_CAPACITY, VENUE_INFO } from '@/lib/constants';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
@@ -27,7 +30,12 @@ function CountdownUnit({ value, label, pad = 0 }: { value: number; label: string
 }
 
 export default function Index() {
+  const queryClient = useQueryClient();
   const { data: settings } = useSystemSettings();
+  const onPaymentLinkHover = useCallback(() => {
+    prefetchPaymentEligible(queryClient);
+    prefetchInternalMembers(queryClient);
+  }, [queryClient]);
   const stats = useRegistrationStats();
   const deadlineSource = settings?.deadline || EVENT_INFO.deadline;
   const deadlineDisplay = (settings?.deadline ? formatDeadlineDisplay(settings.deadline) : null) ?? EVENT_INFO.deadlineDisplay;
@@ -145,7 +153,7 @@ export default function Index() {
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
-              <Link to="/payment">
+              <Link to="/payment" onMouseEnter={onPaymentLinkHover}>
                 <Button size="lg" variant="outline" className="gap-2 px-8 py-5 text-base md:text-lg border-primary/40 hover:bg-primary/10">
                   繳費付款
                 </Button>
