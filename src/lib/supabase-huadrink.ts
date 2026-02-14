@@ -1,6 +1,6 @@
 /**
- * public schema 專用 client，避免與共同資料庫其他專案衝突
+ * huadrink schema 專用 client，華地產春酒所有資料表皆在此 schema
  */
 import { supabase } from '@/integrations/supabase/client';
 
-export const huadrink = supabase.schema('public');
+export const huadrink = supabase.schema('huadrink');
