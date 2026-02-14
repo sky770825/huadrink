@@ -65,7 +65,7 @@ export default function AdminLogin() {
       }
 
       const adminsPromise = supabase
-        .schema('huadrink')
+        .schema('public')
         .from('admins')
         .select('id')
         .eq('user_id', user.id)

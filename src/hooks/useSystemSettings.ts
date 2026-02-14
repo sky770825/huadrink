@@ -26,7 +26,8 @@ export function useSystemSettings() {
 
       const result: SystemSettings = {
         registration_mode: settings.registration_mode as 'open' | 'closed' | 'waitlist',
-        deadline: settings.deadline,
+        // 截止日期已延長至 2026年3月3日
+        deadline: '2026-03-03T23:59:00+08:00',
         total_tables: parseInt(settings.total_tables || '10'),
         seats_per_table: parseInt(settings.seats_per_table || '10'),
         payment_bank_name: settings.payment_bank_name,

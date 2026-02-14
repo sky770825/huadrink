@@ -25,9 +25,9 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   console.error('[Supabase] 缺少環境變數：請在專案根目錄設定 .env 的 VITE_SUPABASE_URL 與 VITE_SUPABASE_PUBLISHABLE_KEY');
 }
 
-// 開發時確認連線目標（前端透過此 client + schema('huadrink') 連到 Supabase）
+// 開發時確認連線目標（前端透過此 client + schema('public') 連到 Supabase）
 if (import.meta.env.DEV && SUPABASE_URL) {
-  console.info('[Supabase] 前端資料庫連線：', SUPABASE_URL.replace(/^https:\/\//, '').split('.')[0], '| schema: huadrink');
+  console.info('[Supabase] 前端資料庫連線：', SUPABASE_URL.replace(/^https:\/\//, '').split('.')[0], '| schema: public');
 }
 
 /** 單例：避免 React Strict Mode / HMR 重複執行時產生多個 GoTrueClient 實例 */

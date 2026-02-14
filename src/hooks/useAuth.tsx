@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const ADMIN_QUERY_MS = 15_000;
             const adminsPromise = supabase
-              .schema('huadrink').from('admins')
+              .schema('public').from('admins')
               .select('id')
               .eq('user_id', session.user.id)
               .maybeSingle();
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }, ADMIN_CHECK_TIMEOUT_MS);
       const tryAdmins = (retry = false) => {
         supabase
-          .schema('huadrink')
+          .schema('public')
           .from('admins')
           .select('id')
           .eq('user_id', uid)

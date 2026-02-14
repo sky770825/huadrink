@@ -228,7 +228,7 @@ export default function Payment() {
       const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(uploadData.path);
       const payProofUrl = urlData.publicUrl;
 
-      const rpcPromise = supabase.schema('huadrink').rpc('submit_payment_proof', {
+      const rpcPromise = supabase.rpc('submit_payment_proof', {
         p_registration_id: selectedId,
         p_pay_proof_url: payProofUrl,
         p_pay_proof_last5: trimmed,
