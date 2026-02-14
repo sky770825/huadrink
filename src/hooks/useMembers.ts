@@ -2,8 +2,10 @@ import { useQuery, type QueryClient } from '@tanstack/react-query';
 import { huadrink } from '@/lib/supabase-huadrink';
 import { MEMBERS, MEMBERS_SOURCE } from '@/lib/members';
 import type { Member } from '@/lib/members';
+import { withTimeout } from '@/lib/async';
 
 const MEMBERS_QUERY_KEY = ['internal-members']; // 與 useInternalMembers 共用，後台新增/刪除後會一併更新
+const MEMBERS_TIMEOUT_MS = 15_000;
 
 export async function fetchMembersFromDb(): Promise<Member[]> {
   const { data, error } = await huadrink
@@ -29,7 +31,12 @@ export async function fetchMembersFromDb(): Promise<Member[]> {
 export function useMembers(): { members: Member[]; isLoading: boolean } {
   const fromDb = useQuery({
     queryKey: MEMBERS_QUERY_KEY,
-    queryFn: fetchMembersFromDb,
+    queryFn: ({ signal }) =>
+      withTimeout(fetchMembersFromDb(), {
+        ms: MEMBERS_TIMEOUT_MS,
+        message: '載入內部成員名單逾時，請檢查網路後重試',
+        signal,
+      }),
     enabled: MEMBERS_SOURCE === 'database',
     staleTime: 60 * 1000,
   });
@@ -51,7 +58,11 @@ export function prefetchInternalMembers(queryClient: QueryClient): Promise<void>
   if (MEMBERS_SOURCE !== 'database') return;
   return queryClient.prefetchQuery({
     queryKey: MEMBERS_QUERY_KEY,
-    queryFn: fetchMembersFromDb,
+    queryFn: () =>
+      withTimeout(fetchMembersFromDb(), {
+        ms: MEMBERS_TIMEOUT_MS,
+        message: '載入內部成員名單逾時，請檢查網路後重試',
+      }),
     staleTime: 60 * 1000,
   });
 }

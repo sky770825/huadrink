@@ -24,6 +24,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/comp
 import { REGISTRATION_TYPE_LABELS } from '@/lib/constants';
 import { formatDeadlineDisplay } from '@/lib/utils';
 import { generateRefCode } from '@/lib/refCode';
+import { withTimeout } from '@/lib/async';
 import type { Registration, RegistrationFormData, Attendee, RegistrationType } from '@/types/registration';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -96,7 +97,7 @@ export default function Register() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedRegistration, setSubmittedRegistration] = useState<Registration | null>(null);
-  const { data: settings, isLoading: settingsLoading } = useSystemSettings();
+  const { data: settings, isLoading: settingsLoading, isError: settingsError, refetch: refetchSettings, isFetching: settingsFetching } = useSystemSettings();
   const { data: registrations } = useRegistrations();
   const { toast } = useToast();
 
@@ -218,8 +219,9 @@ export default function Register() {
         status: 'open' as const,
       };
 
-      const insertPromise = Promise.resolve(
-        huadrink.from('registrations').insert(insertData).select().single()
+      const insertPromise = withTimeout(
+        Promise.resolve(huadrink.from('registrations').insert(insertData).select().single()),
+        { ms: 20_000, message: '送出逾時（20 秒），請檢查網路後重試' }
       );
       insertPromise.catch(() => {}); // 避免 AbortError 被當成 Uncaught (in promise)
       const { data: result, error } = await insertPromise;
@@ -307,8 +309,9 @@ export default function Register() {
         admin_note: data.note || null,
       };
 
-      const waitlistPromise = Promise.resolve(
-        huadrink.from('registrations').insert(insertData).select().single()
+      const waitlistPromise = withTimeout(
+        Promise.resolve(huadrink.from('registrations').insert(insertData).select().single()),
+        { ms: 20_000, message: '送出逾時（20 秒），請檢查網路後重試' }
       );
       waitlistPromise.catch(() => {}); // 避免 AbortError 被當成 Uncaught (in promise)
       const { data: result, error } = await waitlistPromise;
@@ -377,6 +380,26 @@ export default function Register() {
     return (
       <div className="min-h-screen marble-bg flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (settingsError) {
+    return (
+      <div className="min-h-screen marble-bg flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-background/80 border border-border/60 rounded-2xl p-6 text-center space-y-3">
+          <p className="text-muted-foreground">無法載入系統設定，請檢查網路後重試。</p>
+          <Button variant="outline" onClick={() => refetchSettings()} disabled={settingsFetching}>
+            {settingsFetching ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                重試中...
+              </>
+            ) : (
+              '重試'
+            )}
+          </Button>
+        </div>
       </div>
     );
   }
